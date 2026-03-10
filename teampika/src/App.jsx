@@ -16,7 +16,17 @@ const firebaseApp = initializeApp(firebaseConfig);
 const db = getDatabase(firebaseApp);
 
 // helper: object → array with id injected
-const toArr = (snap) => snap ? Object.entries(snap).map(([id, v]) => ({ ...v, id })) : [];
+const toArr = (snap) => {
+  if (!snap) return [];
+  if (Array.isArray(snap)) return snap.filter(Boolean);
+  return Object.entries(snap).map(([id, v]) => ({ ...(typeof v === 'object' ? v : {}), id }));
+};
+// Normalize arrays that Firebase may have converted to objects
+const normArr = (v) => {
+  if (!v) return [];
+  if (Array.isArray(v)) return v;
+  return Object.values(v);
+};
 
 // ── Constants ─────────────────────────────────────────────────────────────
 const POSITIONS = ["PG","SG","SF","PF","C"];
@@ -104,6 +114,408 @@ function TagBtn({ label, active, color, onClick }) {
       color: active ? color : "rgba(255,255,255,0.5)" }}>
       {label}
     </button>
+  );
+}
+
+// ── My Team Player Form ───────────────────────────────────────────────────
+const EP = { name:"", positions:[], height:"", strengths:"", playStyles:[], notes:"", photo:"" };
+
+function PlayerForm({ player, onSave, onCancel }) {
+  const [f, setF] = useState({ ...EP, ...(player||{}) });
+  const togPos = (pos) => setF(p => ({ ...p, positions: p.positions.includes(pos) ? p.positions.filter(x=>x!==pos) : [...p.positions, pos] }));
+  const togStyle = (id) => setF(p => ({ ...p, playStyles: p.playStyles.includes(id) ? p.playStyles.filter(x=>x!==id) : [...p.playStyles, id] }));
+  const ac = f.positions.length ? POS_COLOR[f.positions[0]] : "#00e5ff";
+  const handlePhoto = (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (ev) => setF(p => ({...p, photo: ev.target.result}));
+    reader.readAsDataURL(file);
+  };
+  return (
+    <div style={{ background:"rgba(255,255,255,0.04)", border:"1px solid rgba(255,255,255,0.1)", borderRadius:"16px", padding:"20px", marginBottom:"16px" }}>
+      <div style={{ display:"flex", gap:"16px", marginBottom:"12px", alignItems:"flex-start" }}>
+        <div style={{ flexShrink:0 }}>
+          <label style={{...LS, marginBottom:"6px"}}>프로필 사진</label>
+          <label style={{ display:"block", width:"72px", height:"72px", borderRadius:"50%", border:`2px dashed ${ac}80`, background:`${ac}10`, cursor:"pointer", overflow:"hidden", position:"relative" }}>
+            {f.photo
+              ? <img src={f.photo} style={{ width:"100%", height:"100%", objectFit:"cover" }} alt="프로필"/>
+              : <div style={{ width:"100%", height:"100%", display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center", gap:"2px" }}>
+                  <span style={{ fontSize:"22px" }}>📷</span>
+                  <span style={{ fontSize:"9px", color:`${ac}90`, textAlign:"center" }}>사진 추가</span>
+                </div>
+            }
+            <input type="file" accept="image/*" style={{ display:"none" }} onChange={handlePhoto}/>
+          </label>
+        </div>
+        <div style={{ flex:1, display:"grid", gridTemplateColumns:"1fr 1fr", gap:"12px" }}>
+          <div><label style={LS}>이름 *</label><input style={IS} value={f.name} onChange={e=>setF(p=>({...p,name:e.target.value}))} placeholder="홍길동"/></div>
+          <div><label style={LS}>키 (cm)</label><input style={IS} value={f.height} onChange={e=>setF(p=>({...p,height:e.target.value}))} placeholder="185"/></div>
+        </div>
+      </div>
+      <div style={{ marginBottom:"12px" }}>
+        <label style={LS}>포지션 (복수 선택)</label>
+        <div style={{ display:"flex", gap:"6px", flexWrap:"wrap" }}>
+          {POSITIONS.map(pos => {
+            const active = f.positions.includes(pos);
+            const c = POS_COLOR[pos];
+            return (
+              <button key={pos} onClick={()=>togPos(pos)} style={{ padding:"6px 12px", borderRadius:"8px", border:`1px solid ${active?c:"rgba(255,255,255,0.15)"}`, background:active?`${c}20`:"transparent", color:active?c:"rgba(255,255,255,0.5)", fontWeight:active?"700":"400", fontSize:"13px", cursor:"pointer", transition:"all 0.15s" }}>
+                {pos}<span style={{fontSize:"10px",marginLeft:"4px",opacity:0.7}}>{POS_LABEL[pos]}</span>
+              </button>
+            );
+          })}
+        </div>
+      </div>
+      <div style={{ marginBottom:"12px" }}><label style={LS}>장점 / 특징</label>
+        <textarea style={{...IS,height:"60px",resize:"vertical"}} value={f.strengths} onChange={e=>setF(p=>({...p,strengths:e.target.value}))} placeholder="빠른 드리블, 강한 수비..."/></div>
+      <div style={{ marginBottom:"16px" }}>
+        <label style={LS}>🏀 플레이 스타일 <span style={{textTransform:"none",color:"rgba(255,255,255,0.25)",fontSize:"10px",marginLeft:"4px"}}>버튼에 마우스를 올리면 설명이 표시됩니다</span></label>
+        <div style={{ display:"flex", flexWrap:"wrap", gap:"6px" }}>
+          {PLAY_STYLES.map(s=><StyleBtn key={s.id} style={s} active={f.playStyles.includes(s.id)} color={ac} onClick={()=>togStyle(s.id)}/>)}
+        </div>
+      </div>
+      <div style={{ marginBottom:"16px" }}><label style={LS}>메모</label>
+        <textarea style={{...IS,height:"50px",resize:"vertical"}} value={f.notes} onChange={e=>setF(p=>({...p,notes:e.target.value}))} placeholder="특이사항..."/></div>
+      <div style={{ display:"flex", gap:"8px" }}>
+        <button onClick={()=>f.name&&onSave(f)} style={{ flex:1, padding:"10px", borderRadius:"8px", border:"none", background:f.name?"#00e5ff":"rgba(255,255,255,0.1)", color:f.name?"#000":"rgba(255,255,255,0.3)", fontWeight:"700", cursor:f.name?"pointer":"default" }}>저장</button>
+        <button onClick={onCancel} style={{ padding:"10px 16px", borderRadius:"8px", border:"1px solid rgba(255,255,255,0.15)", background:"transparent", color:"rgba(255,255,255,0.6)", cursor:"pointer" }}>취소</button>
+      </div>
+    </div>
+  );
+}
+
+// ── My Team Player Card ───────────────────────────────────────────────────
+function PlayerCard({ player, onEdit, onDelete }) {
+  const positions = player.positions||[];
+  const c = positions.length ? POS_COLOR[positions[0]] : "#00e5ff";
+  return (
+    <div style={{ background:"rgba(255,255,255,0.03)", border:`1px solid ${c}30`, borderRadius:"12px", padding:"16px", transition:"border-color 0.2s" }}
+      onMouseEnter={e=>e.currentTarget.style.borderColor=c+"70"} onMouseLeave={e=>e.currentTarget.style.borderColor=c+"30"}>
+      <div style={{ display:"flex", alignItems:"flex-start", gap:"12px", marginBottom:"10px" }}>
+        <div style={{ width:"48px", height:"48px", borderRadius:"50%", background:`${c}20`, border:`2px solid ${c}`, flexShrink:0, overflow:"hidden", display:"flex", alignItems:"center", justifyContent:"center", fontSize:"20px", fontWeight:"900", color:c }}>
+          {player.photo ? <img src={player.photo} style={{ width:"100%", height:"100%", objectFit:"cover" }} alt={player.name}/> : player.name.charAt(0)}
+        </div>
+        <div style={{ flex:1 }}>
+          <div style={{ display:"flex", alignItems:"center", gap:"8px", flexWrap:"wrap" }}>
+            <span style={{ fontSize:"16px", fontWeight:"700", color:"#fff" }}>{player.name}</span>
+            {positions.map(pos=><span key={pos} style={{ background:`${POS_COLOR[pos]}20`, color:POS_COLOR[pos], border:`1px solid ${POS_COLOR[pos]}50`, borderRadius:"4px", padding:"1px 6px", fontSize:"11px", fontWeight:"700" }}>{pos}</span>)}
+            {player.height&&<span style={{ color:"rgba(255,255,255,0.4)", fontSize:"12px" }}>{player.height}cm</span>}
+          </div>
+          {positions.length>0&&<div style={{ color:"rgba(255,255,255,0.4)", fontSize:"11px", marginTop:"2px" }}>{positions.map(p=>POS_LABEL[p]).join(" · ")}</div>}
+        </div>
+        <div style={{ display:"flex", gap:"6px" }}>
+          <button onClick={onEdit} style={{ background:"rgba(255,255,255,0.06)", border:"none", borderRadius:"6px", padding:"4px 8px", color:"rgba(255,255,255,0.6)", cursor:"pointer", fontSize:"12px" }}>편집</button>
+          <button onClick={onDelete} style={{ background:"rgba(255,60,60,0.1)", border:"none", borderRadius:"6px", padding:"4px 8px", color:"#ff6b6b", cursor:"pointer", fontSize:"12px" }}>삭제</button>
+        </div>
+      </div>
+      {player.strengths&&<div style={{ marginBottom:"8px" }}><div style={{ fontSize:"11px", color:"rgba(255,255,255,0.4)", marginBottom:"4px" }}>💪 장점</div><div style={{ fontSize:"13px", color:"rgba(255,255,255,0.8)", lineHeight:"1.5" }}>{player.strengths}</div></div>}
+      {(player.playStyles||[]).length>0&&<div style={{ marginBottom:"6px" }}><div style={{ fontSize:"11px", color:"rgba(255,255,255,0.4)", marginBottom:"4px" }}>🏀 플레이 스타일</div><div style={{ display:"flex", flexWrap:"wrap", gap:"4px" }}>{(player.playStyles||[]).map(id=>{ const s=PLAY_STYLES.find(x=>x.id===id); return s?<StyleTagCard key={id} style={s} color={c}/>:null; })}</div></div>}
+      {player.notes&&<div style={{ marginTop:"8px", padding:"8px", background:"rgba(255,255,255,0.03)", borderRadius:"6px", fontSize:"12px", color:"rgba(255,255,255,0.5)", borderLeft:`2px solid ${c}50` }}>{player.notes}</div>}
+    </div>
+  );
+}
+
+// ── Style Tag Card (read-only with tooltip) ───────────────────────────────
+function StyleTagCard({ style, color }) {
+  const [hover, setHover] = useState(false);
+  return (
+    <div style={{ position:"relative", display:"inline-block" }}>
+      <span onMouseEnter={()=>setHover(true)} onMouseLeave={()=>setHover(false)}
+        style={{ display:"inline-block", background:`${color}15`, color, border:`1px solid ${color}40`, borderRadius:"20px", padding:"2px 9px", fontSize:"11px", cursor:"default", userSelect:"none" }}>
+        {style.ko}
+      </span>
+      {hover && (
+        <div style={{ position:"absolute", bottom:"calc(100% + 8px)", left:"50%", transform:"translateX(-50%)", zIndex:100, width:"210px", background:"#1a2540", border:"1px solid rgba(255,255,255,0.15)", borderRadius:"10px", padding:"10px 12px", pointerEvents:"none", boxShadow:"0 8px 24px rgba(0,0,0,0.5)" }}>
+          <div style={{ fontSize:"12px", fontWeight:"700", color:"#fff", marginBottom:"3px" }}>{style.label}</div>
+          <div style={{ fontSize:"11px", color:"rgba(255,255,255,0.6)", lineHeight:"1.5", marginBottom:"5px" }}>{style.desc}</div>
+          <div style={{ fontSize:"11px", color:"#ffb347" }}>예: {style.ex}</div>
+          <div style={{ position:"absolute", bottom:"-5px", left:"50%", transform:"translateX(-50%)", width:"9px", height:"9px", background:"#1a2540", border:"1px solid rgba(255,255,255,0.15)", borderTop:"none", borderLeft:"none", rotate:"45deg" }}/>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ── Court SVG ─────────────────────────────────────────────────────────────
+function CourtSVG() {
+  const lc = "rgba(255,255,255,0.9)", lw = 2.2;
+  const bY = CM + 5.25*FT, rimR = FT*0.75;
+  const pW = 16*FT, pX = CCX-pW/2, ftY = CM+19*FT, ftR = 6*FT, raR = 4*FT;
+  const r3 = 23.75*FT, c3L = CM+3*FT, c3R = CM+CW-3*FT;
+  const c3Y = bY + Math.sqrt(r3*r3 - (CCX-c3L)**2);
+  const botY = CM+CD;
+  const stripes = Array.from({length:21},(_,i)=>CM+i*(CW/20));
+  return (
+    <>
+      <defs>
+        <linearGradient id="wg" x1="0" y1="0" x2="1" y2="0">
+          <stop offset="0%" stopColor="#c8853a"/><stop offset="20%" stopColor="#d49550"/>
+          <stop offset="40%" stopColor="#be7828"/><stop offset="60%" stopColor="#d09248"/>
+          <stop offset="80%" stopColor="#c07830"/><stop offset="100%" stopColor="#c88540"/>
+        </linearGradient>
+        <linearGradient id="ws" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%" stopColor="rgba(255,230,170,0.22)"/>
+          <stop offset="50%" stopColor="rgba(255,210,130,0.06)"/>
+          <stop offset="100%" stopColor="rgba(160,90,10,0.12)"/>
+        </linearGradient>
+        <clipPath id="cc"><rect x={CM} y={CM} width={CW} height={CD}/></clipPath>
+      </defs>
+      <rect x={CM} y={CM} width={CW} height={CD} fill="url(#wg)"/>
+      <rect x={CM} y={CM} width={CW} height={CD} fill="url(#ws)"/>
+      <g clipPath="url(#cc)">
+        {stripes.map((x,i)=><line key={i} x1={x} y1={CM} x2={x} y2={botY} stroke="rgba(150,90,20,0.09)" strokeWidth="1.4"/>)}
+      </g>
+      <g stroke={lc} strokeWidth={lw} fill="none">
+        <line x1={CM} y1={CM} x2={CM+CW} y2={CM}/>
+        <line x1={CM} y1={CM} x2={CM} y2={botY}/>
+        <line x1={CM+CW} y1={CM} x2={CM+CW} y2={botY}/>
+        <line x1={CM} y1={botY} x2={CM+CW} y2={botY}/>
+        <rect x={pX} y={CM} width={pW} height={19*FT} fill="rgba(185,75,15,0.25)" stroke={lc} strokeWidth={lw}/>
+        <line x1={pX} y1={ftY} x2={pX+pW} y2={ftY}/>
+        <path d={`M ${CCX-ftR} ${ftY} A ${ftR} ${ftR} 0 0 0 ${CCX+ftR} ${ftY}`}/>
+        <path d={`M ${CCX-ftR} ${ftY} A ${ftR} ${ftR} 0 0 1 ${CCX+ftR} ${ftY}`} strokeDasharray="9,6"/>
+        <path d={`M ${CCX-raR} ${bY} A ${raR} ${raR} 0 0 1 ${CCX+raR} ${bY}`}/>
+        {[7,8,11,14].map(f=>{
+          const y=CM+f*FT;
+          return <g key={f}><line x1={pX-7} y1={y} x2={pX} y2={y}/><line x1={pX+pW} y1={y} x2={pX+pW+7} y2={y}/></g>;
+        })}
+        <line x1={CCX-2*FT} y1={CM+4*FT} x2={CCX+2*FT} y2={CM+4*FT} strokeWidth={3.5}/>
+        <circle cx={CCX} cy={bY} r={rimR} stroke="#ff7a00" strokeWidth={2.8}/>
+        <line x1={c3L} y1={CM} x2={c3L} y2={c3Y}/>
+        <line x1={c3R} y1={CM} x2={c3R} y2={c3Y}/>
+        <path d={`M ${c3L} ${c3Y} A ${r3} ${r3} 0 0 0 ${c3R} ${c3Y}`}/>
+      </g>
+    </>
+  );
+}
+
+// ── Half Court Editor ─────────────────────────────────────────────────────
+// zones: { [playerId]: [ {id, cx, cy, rx, ry}, ... ] }  (array of zones per player)
+const DEF_ZONE = { cx: CCX, cy: CM + CD * 0.62, rx: 55, ry: 35 };
+const ZONE_COLORS = ["#00e5ff","#a8ff3e","#ff6b35","#ff3e9d","#ffe03e","#c084fc","#fb923c","#34d399"];
+
+function HalfCourtEditor({ players, zones, onZonesChange }) {
+  const svgRef = useRef(null);
+  const zonesRef = useRef(zones);
+  useEffect(() => { zonesRef.current = zones; }, [zones]);
+
+  const [selPlayerId, setSelPlayerId] = useState(null);
+  const [selZoneId, setSelZoneId] = useState(null);
+  const dragRef = useRef(null);
+
+  const activePlayers = players.filter(p => p.name);
+  const selPlayer = activePlayers.find(p => p.id === selPlayerId);
+
+  // Get zones for a player as array
+  const getPlayerZones = (pid) => {
+    const z = zonesRef.current[pid];
+    if (!z) return [];
+    if (Array.isArray(z)) return z;
+    // legacy single zone object
+    return [{ ...z, id: "z0" }];
+  };
+
+  const addZone = () => {
+    if (!selPlayerId) return;
+    const existing = getPlayerZones(selPlayerId);
+    const newZone = { ...DEF_ZONE, id: `z${Date.now()}`,
+      cx: CCX + (Math.random()-0.5)*80,
+      cy: CM + CD * (0.4 + Math.random()*0.35),
+    };
+    const updated = { ...zonesRef.current, [selPlayerId]: [...existing, newZone] };
+    onZonesChange(updated);
+    setSelZoneId(newZone.id);
+  };
+
+  const delZone = (pid, zid) => {
+    const existing = getPlayerZones(pid).filter(z => z.id !== zid);
+    const updated = { ...zonesRef.current, [pid]: existing };
+    onZonesChange(updated);
+    if (selZoneId === zid) setSelZoneId(null);
+  };
+
+  const svgPt = (e) => {
+    const el = svgRef.current;
+    if (!el) return { x:0, y:0 };
+    const r = el.getBoundingClientRect();
+    const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+    const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+    return { x:(clientX-r.left)*(VBW/r.width), y:(clientY-r.top)*(VBH/r.height) };
+  };
+
+  const onHandleDown = (e, pid, zid, handle) => {
+    e.preventDefault(); e.stopPropagation();
+    setSelPlayerId(pid); setSelZoneId(zid);
+    const z = getPlayerZones(pid).find(z => z.id === zid) || DEF_ZONE;
+    dragRef.current = { pid, zid, handle, startPt: svgPt(e), startZone: { ...z } };
+  };
+
+  useEffect(() => {
+    const onMove = (e) => {
+      const d = dragRef.current;
+      if (!d) return;
+      e.preventDefault();
+      const cur = svgPt(e);
+      const dx = cur.x - d.startPt.x, dy = cur.y - d.startPt.y;
+      const z = { ...d.startZone };
+      if (d.handle === "move") {
+        z.cx = Math.max(CM+z.rx, Math.min(CM+CW-z.rx, z.cx+dx));
+        z.cy = Math.max(CM+z.ry, Math.min(CM+CD-z.ry, z.cy+dy));
+      } else if (d.handle === "rx") {
+        z.rx = Math.max(18, Math.min(CW*0.48, d.startZone.rx+dx));
+      } else if (d.handle === "ry") {
+        z.ry = Math.max(14, Math.min(CD*0.45, d.startZone.ry+dy));
+      }
+      const zones = zonesRef.current;
+      const arr = getPlayerZones(d.pid).map(x => x.id===d.zid ? z : x);
+      onZonesChange({ ...zones, [d.pid]: arr });
+    };
+    const onUp = () => { dragRef.current = null; };
+    window.addEventListener("mousemove", onMove);
+    window.addEventListener("mouseup", onUp);
+    window.addEventListener("touchmove", onMove, { passive:false });
+    window.addEventListener("touchend", onUp);
+    return () => {
+      window.removeEventListener("mousemove", onMove);
+      window.removeEventListener("mouseup", onUp);
+      window.removeEventListener("touchmove", onMove);
+      window.removeEventListener("touchend", onUp);
+    };
+  }, [onZonesChange]);
+
+  const resetAll = () => {
+    const next = {};
+    activePlayers.forEach((p, i) => {
+      const col = i%4, row = Math.floor(i/4);
+      next[p.id] = [{ id:"z0", cx: CM+CW*(0.12+col*0.24), cy: CM+CD*(0.42+row*0.24), rx:52, ry:34 }];
+    });
+    onZonesChange(next);
+  };
+
+  const pc = selPlayer ? ((selPlayer.positions||[]).length ? POS_COLOR[selPlayer.positions[0]] : "#00e5ff") : "#00e5ff";
+  const selPlayerZones = selPlayerId ? getPlayerZones(selPlayerId) : [];
+
+  return (
+    <div>
+      <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:"12px", flexWrap:"wrap", gap:"8px" }}>
+        {/* Player selector */}
+        <div style={{ display:"flex", gap:"6px", flexWrap:"wrap" }}>
+          {!activePlayers.length && <div style={{ fontSize:"12px", color:"rgba(255,255,255,0.25)" }}>선수단 탭에서 선수를 추가하세요</div>}
+          {activePlayers.map(p => {
+            const c = (p.positions||[]).length ? POS_COLOR[p.positions[0]] : "#00e5ff";
+            const active = selPlayerId === p.id;
+            const zCount = getPlayerZones(p.id).length;
+            return (
+              <button key={p.id} onClick={() => { setSelPlayerId(active ? null : p.id); setSelZoneId(null); }}
+                style={{ display:"flex", alignItems:"center", gap:"6px", padding:"6px 12px", borderRadius:"20px", border:`1px solid ${active?c:"rgba(255,255,255,0.12)"}`, background:active?`${c}20`:"rgba(255,255,255,0.03)", cursor:"pointer", transition:"all 0.15s" }}>
+                <div style={{ width:"22px", height:"22px", borderRadius:"50%", overflow:"hidden", border:`1.5px solid ${c}`, background:`${c}15`, flexShrink:0, display:"flex", alignItems:"center", justifyContent:"center", fontSize:"10px", fontWeight:"800", color:c }}>
+                  {p.photo ? <img src={p.photo} style={{ width:"100%", height:"100%", objectFit:"cover" }}/> : p.name.charAt(0)}
+                </div>
+                <span style={{ fontSize:"12px", color:active?c:"rgba(255,255,255,0.55)", fontWeight:active?"700":"400" }}>{p.name}</span>
+                {zCount > 0 && <span style={{ fontSize:"10px", background:`${c}25`, color:c, borderRadius:"10px", padding:"1px 6px" }}>{zCount}</span>}
+              </button>
+            );
+          })}
+        </div>
+        <div style={{ display:"flex", gap:"8px" }}>
+          {selPlayerId && <button onClick={addZone} style={{ padding:"6px 14px", borderRadius:"8px", border:`1px solid ${pc}60`, background:`${pc}15`, color:pc, cursor:"pointer", fontSize:"12px", fontWeight:"700" }}>+ 구역 추가</button>}
+          <button onClick={resetAll} style={{ padding:"6px 14px", borderRadius:"8px", border:"1px solid rgba(255,255,255,0.12)", background:"rgba(255,255,255,0.04)", color:"rgba(255,255,255,0.5)", cursor:"pointer", fontSize:"12px" }}>🔄 초기화</button>
+        </div>
+      </div>
+
+      <div style={{ display:"flex", gap:"16px", alignItems:"flex-start", flexWrap:"wrap" }}>
+        {/* SVG court */}
+        <div style={{ flex:"1 1 380px", minWidth:"280px" }}>
+          <svg ref={svgRef} viewBox={`0 0 ${VBW} ${VBH}`}
+            style={{ width:"100%", borderRadius:"12px", border:"2px solid rgba(255,255,255,0.12)", userSelect:"none", touchAction:"none", boxShadow:"0 8px 32px rgba(0,0,0,0.6)" }}
+            onClick={e => { if (e.target === e.currentTarget) setSelZoneId(null); }}>
+            <CourtSVG/>
+
+            {/* Show all players' zones dimly when no player selected */}
+            {!selPlayerId && activePlayers.map(player => {
+              const c = (player.positions||[]).length ? POS_COLOR[player.positions[0]] : "#00e5ff";
+              return getPlayerZones(player.id).map((z, zi) => (
+                <g key={`${player.id}-${z.id}`}>
+                  <ellipse cx={z.cx} cy={z.cy} rx={z.rx} ry={z.ry}
+                    fill={c} fillOpacity={0.07} stroke={c} strokeWidth={1.2} strokeDasharray="6,4" strokeOpacity={0.35}/>
+                  {zi === 0 && <text x={z.cx} y={z.cy+1} textAnchor="middle" dominantBaseline="middle"
+                    fontSize="11" fontWeight="700" fill={c} fillOpacity="0.5"
+                    stroke="rgba(0,0,0,0.5)" strokeWidth="2" paintOrder="stroke" style={{ pointerEvents:"none" }}>
+                    {player.name}
+                  </text>}
+                </g>
+              ));
+            })}
+
+            {/* Show selected player's zones fully */}
+            {selPlayerId && selPlayerZones.map((z, zi) => {
+              const sel = selZoneId === z.id;
+              const zColor = ZONE_COLORS[zi % ZONE_COLORS.length];
+              return (
+                <g key={z.id}>
+                  <ellipse cx={z.cx} cy={z.cy} rx={z.rx} ry={z.ry}
+                    fill={pc} fillOpacity={sel ? 0.3 : 0.15}
+                    stroke={zColor} strokeWidth={sel ? 2.5 : 1.8}
+                    strokeDasharray={sel ? "none" : "8,3"}
+                    style={{ cursor:"grab" }}
+                    onMouseDown={e => onHandleDown(e, selPlayerId, z.id, "move")}
+                    onTouchStart={e => onHandleDown(e, selPlayerId, z.id, "move")}
+                    onClick={e => { e.stopPropagation(); setSelZoneId(z.id); }}/>
+                  <text x={z.cx} y={z.cy+1} textAnchor="middle" dominantBaseline="middle"
+                    fontSize="11" fontWeight="800" fill={zColor}
+                    stroke="rgba(0,0,0,0.7)" strokeWidth="2.5" paintOrder="stroke"
+                    style={{ pointerEvents:"none" }}>
+                    {selPlayer?.name}{selPlayerZones.length > 1 ? ` ${zi+1}` : ""}
+                  </text>
+                  {sel && <>
+                    <circle cx={z.cx+z.rx} cy={z.cy} r={9} fill={zColor} stroke="#0a1628" strokeWidth="2"
+                      style={{ cursor:"ew-resize" }}
+                      onMouseDown={e => onHandleDown(e, selPlayerId, z.id, "rx")}
+                      onTouchStart={e => onHandleDown(e, selPlayerId, z.id, "rx")}/>
+                    <text x={z.cx+z.rx} y={z.cy+1} textAnchor="middle" dominantBaseline="middle"
+                      fontSize="9" fontWeight="900" fill="#0a1628" style={{ pointerEvents:"none" }}>↔</text>
+                    <circle cx={z.cx} cy={z.cy+z.ry} r={9} fill={zColor} stroke="#0a1628" strokeWidth="2"
+                      style={{ cursor:"ns-resize" }}
+                      onMouseDown={e => onHandleDown(e, selPlayerId, z.id, "ry")}
+                      onTouchStart={e => onHandleDown(e, selPlayerId, z.id, "ry")}/>
+                    <text x={z.cx} y={z.cy+z.ry+1} textAnchor="middle" dominantBaseline="middle"
+                      fontSize="9" fontWeight="900" fill="#0a1628" style={{ pointerEvents:"none" }}>↕</text>
+                    <circle cx={z.cx} cy={z.cy} r={4} fill={zColor} stroke="#0a1628" strokeWidth="1.5"
+                      style={{ pointerEvents:"none" }}/>
+                  </>}
+                </g>
+              );
+            })}
+          </svg>
+          <div style={{ marginTop:"8px", fontSize:"11px", color:"rgba(255,255,255,0.3)", textAlign:"center" }}>
+            {selPlayerId ? `${selPlayer?.name} 구역 편집 중 · 타원 클릭→선택 · 드래그→이동 · ↔↕→크기` : "선수 버튼 클릭 → 공격 구역 편집"}
+          </div>
+        </div>
+
+        {/* Zone list for selected player */}
+        {selPlayerId && (
+          <div style={{ width:"180px", flexShrink:0 }}>
+            <div style={{ fontSize:"12px", fontWeight:"700", color:pc, marginBottom:"10px" }}>{selPlayer?.name}의 공격 구역</div>
+            {!selPlayerZones.length && <div style={{ fontSize:"12px", color:"rgba(255,255,255,0.25)", marginBottom:"10px" }}>구역이 없어요</div>}
+            {selPlayerZones.map((z, zi) => {
+              const zColor = ZONE_COLORS[zi % ZONE_COLORS.length];
+              const sel = selZoneId === z.id;
+              return (
+                <div key={z.id} onClick={() => setSelZoneId(z.id)}
+                  style={{ display:"flex", alignItems:"center", gap:"8px", padding:"8px 10px", borderRadius:"8px", border:`1px solid ${sel?zColor:"rgba(255,255,255,0.08)"}`, background:sel?`${zColor}12`:"rgba(255,255,255,0.02)", cursor:"pointer", marginBottom:"6px", transition:"all 0.15s" }}>
+                  <div style={{ width:"10px", height:"10px", borderRadius:"50%", background:zColor, flexShrink:0 }}/>
+                  <span style={{ fontSize:"12px", color:sel?zColor:"rgba(255,255,255,0.6)", flex:1 }}>구역 {zi+1}</span>
+                  <button onClick={e => { e.stopPropagation(); delZone(selPlayerId, z.id); }}
+                    style={{ background:"none", border:"none", color:"rgba(255,80,80,0.5)", cursor:"pointer", fontSize:"13px", padding:"0", lineHeight:1 }}>✕</button>
+                </div>
+              );
+            })}
+            <button onClick={addZone} style={{ width:"100%", padding:"7px", borderRadius:"8px", border:`1px dashed ${pc}50`, background:"transparent", color:pc, cursor:"pointer", fontSize:"12px", fontWeight:"700", marginTop:"4px" }}>+ 구역 추가</button>
+          </div>
+        )}
+      </div>
+    </div>
   );
 }
 
@@ -608,8 +1020,8 @@ const EO = { name:"", positions:[], height:"", playStyle:[], weaknesses:[], driv
 function OppForm({ player, onSave, onCancel }) {
   const [f, setF] = useState({ ...EO, ...(player||{}) });
   const togPos = (pos) => setF(p=>({ ...p, positions: (p.positions||[]).includes(pos) ? p.positions.filter(x=>x!==pos) : [...(p.positions||[]), pos] }));
-  const togPS = (id) => setF(p=>({ ...p, playStyle: p.playStyle.includes(id) ? p.playStyle.filter(x=>x!==id) : [...p.playStyle, id] }));
-  const togW  = (val) => setF(p=>({ ...p, weaknesses: p.weaknesses.includes(val) ? p.weaknesses.filter(x=>x!==val) : [...p.weaknesses, val] }));
+  const togPS = (id) => setF(p=>({ ...p, playStyle: (Array.isArray(p.playStyle)?p.playStyle:Object.values(p.playStyle||{})).includes(id) ? (Array.isArray(p.playStyle)?p.playStyle:Object.values(p.playStyle||{})).filter(x=>x!==id) : [...(Array.isArray(p.playStyle)?p.playStyle:Object.values(p.playStyle||{})), id] }));
+  const togW  = (val) => setF(p=>({ ...p, weaknesses: (Array.isArray(p.weaknesses)?p.weaknesses:Object.values(p.weaknesses||{})).includes(val) ? (Array.isArray(p.weaknesses)?p.weaknesses:Object.values(p.weaknesses||{})).filter(x=>x!==val) : [...(Array.isArray(p.weaknesses)?p.weaknesses:Object.values(p.weaknesses||{})), val] }));
   return (
     <div style={{ background:"rgba(255,60,60,0.04)", border:"1px solid rgba(255,60,60,0.18)", borderRadius:"16px", padding:"20px", marginBottom:"16px" }}>
       <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:"12px", marginBottom:"12px" }}>
@@ -725,12 +1137,27 @@ export default function App() {
     };
 
     listen("teamName", (val) => { if (val) setTeamName(val); });
-    listen("players", (val) => { setPlayers(val ? toArr(val) : []); });
+    listen("players", (val) => {
+      const arr = val ? toArr(val).map(p => ({
+        ...p,
+        positions: normArr(p.positions),
+        playStyles: normArr(p.playStyles),
+      })) : [];
+      setPlayers(arr);
+    });
     listen("zones",   (val) => { setZones(val || {}); });
     listen("strategy",(val) => { if (val) setStrat(val); });
     listen("oppTeams",(val) => {
       if (val) {
-        const teams = toArr(val).map(t => ({ ...t, players: t.players ? toArr(t.players) : [] }));
+        const teams = toArr(val).map(t => ({
+          ...t,
+          players: t.players ? toArr(t.players).map(p => ({
+            ...p,
+            positions: normArr(p.positions),
+            playStyle: normArr(p.playStyle),
+            weaknesses: normArr(p.weaknesses),
+          })) : []
+        }));
         setOppTeams(teams.length ? teams : [{ id:"t1", name:"상대 팀 1", players:[] }]);
       }
     });
