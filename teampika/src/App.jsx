@@ -603,7 +603,7 @@ function VoiceTab({ players, voices, onAdd, onDel }) {
   const selC  = selP ? ((selP.positions||[]).length ? POS_COLOR[selP.positions[0]] : POS_COLOR.PG) : POS_COLOR.PG;
   const canPost = selPlayer && text.trim();
   const filtered = filter === "all" ? voices : voices.filter(v => v.playerId === filter);
-  const MAX = 280;
+  const MAX = 2000;
 
   const submit = () => {
     if (!canPost) return;
