@@ -26,16 +26,15 @@ const normArr = (v) => {
   return Object.values(v);
 };
 
-// ── Constants (unchanged) ──────────────────────────────────────────────────
+// ── Constants ──────────────────────────────────────────────────────────────
 const POSITIONS = ["PG","SG","SF","PF","C"];
 
-// ★ 인스타 감성 포지션 컬러 — 채도 낮은 파스텔/뮤트 계열
 const POS_COLOR = {
-  PG: "#5B8DEF",  // soft blue
-  SG: "#F2845C",  // muted coral
-  SF: "#5CB87A",  // sage green
-  PF: "#C97BB2",  // dusty pink/purple
-  C:  "#E5B84A",  // warm amber
+  PG: "#5B8DEF",
+  SG: "#F2845C",
+  SF: "#5CB87A",
+  PF: "#C97BB2",
+  C:  "#E5B84A",
 };
 const POS_LABEL = { PG:"포인트가드", SG:"슈팅가드", SF:"스몰포워드", PF:"파워포워드", C:"센터" };
 
@@ -79,21 +78,20 @@ const DEFAULT_ZONE = {
 
 // ── Design tokens ──────────────────────────────────────────────────────────
 const T = {
-  bg:        "#F7F7F5",       // 오프화이트 배경
-  surface:   "#FFFFFF",       // 카드 흰색
-  surfaceAlt:"#F2F1EE",       // 살짝 회색 서피스
-  border:    "#E8E6E1",       // 연한 베이지 보더
-  borderMid: "#D5D2CB",       // 조금 진한 보더
-  text:      "#1A1A1A",       // 거의 검정
-  textSub:   "#6B6860",       // 서브 텍스트
-  textMuted: "#AAA89F",       // 뮤트 텍스트
-  accent:    "#1A1A1A",       // 액센트 = 다크
-  accentSoft:"#F0EDE8",       // 소프트 액센트 배경
+  bg:        "#F7F7F5",
+  surface:   "#FFFFFF",
+  surfaceAlt:"#F2F1EE",
+  border:    "#E8E6E1",
+  borderMid: "#D5D2CB",
+  text:      "#1A1A1A",
+  textSub:   "#6B6860",
+  textMuted: "#AAA89F",
+  accent:    "#1A1A1A",
+  accentSoft:"#F0EDE8",
   danger:    "#E05555",
   dangerBg:  "rgba(224,85,85,0.07)",
 };
 
-// ── Shared styles (redesigned) ─────────────────────────────────────────────
 const LS = {
   display:"block",
   fontSize:"11px",
@@ -117,7 +115,7 @@ const IS = {
   transition:"border-color 0.15s",
 };
 
-// ── Court constants (unchanged) ────────────────────────────────────────────
+// ── Court constants ────────────────────────────────────────────────────────
 const CW = 488, CM = 16;
 const CCX = CM + CW / 2;
 const FT = CW / 50;
@@ -357,7 +355,7 @@ function PlayerCard({ player, onEdit, onDelete }) {
   );
 }
 
-// ── Court SVG (wood floor, same as before) ─────────────────────────────────
+// ── Court SVG ─────────────────────────────────────────────────────────────
 function CourtSVG() {
   const lc = "rgba(255,255,255,0.9)", lw = 2.2;
   const bY = CM + 5.25*FT, rimR = FT*0.75;
@@ -410,7 +408,7 @@ function CourtSVG() {
   );
 }
 
-// ── HalfCourtEditor (logic unchanged, style updated) ──────────────────────
+// ── HalfCourtEditor ───────────────────────────────────────────────────────
 const DEF_ZONE = { cx: CCX, cy: CM + CD * 0.62, rx: 55, ry: 35 };
 const ZONE_COLORS = ["#5B8DEF","#F2845C","#5CB87A","#C97BB2","#E5B84A","#7B9EE5","#E58C5B","#7BC895"];
 
@@ -591,7 +589,7 @@ function HalfCourtEditor({ players, zones, onZonesChange }) {
   );
 }
 
-// ── VoiceTab (Twitter-style feed) ─────────────────────────────────────────
+// ── VoiceTab ──────────────────────────────────────────────────────────────
 function VoiceTab({ players, voices, onAdd, onDel }) {
   const [selPlayer, setSelPlayer] = useState("");
   const [text, setText]           = useState("");
@@ -616,7 +614,6 @@ function VoiceTab({ players, voices, onAdd, onDel }) {
     if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) submit();
   };
 
-  // auto-grow textarea
   const onInput = (e) => {
     setText(e.target.value);
     e.target.style.height = "auto";
@@ -625,13 +622,8 @@ function VoiceTab({ players, voices, onAdd, onDel }) {
 
   return (
     <div style={{ maxWidth:"600px" }}>
-
-      {/* ── Compose box ── */}
       <div style={{ background: T.surface, border:`1px solid ${T.border}`, borderRadius:"16px", padding:"16px 18px", marginBottom:"20px" }}>
-
-        {/* Avatar row + textarea */}
         <div style={{ display:"flex", gap:"12px" }}>
-          {/* Avatar / player picker trigger */}
           <div style={{ flexShrink:0, paddingTop:"2px" }}>
             {selP ? (
               <div onClick={() => setSelPlayer("")}
@@ -646,7 +638,6 @@ function VoiceTab({ players, voices, onAdd, onDel }) {
           </div>
 
           <div style={{ flex:1, display:"flex", flexDirection:"column", gap:"10px" }}>
-            {/* Player selector chips */}
             {!activePlayers.length ? (
               <div style={{ fontSize:"12px", color: T.textMuted, paddingTop:"10px" }}>선수단 탭에서 선수를 먼저 등록해주세요</div>
             ) : (
@@ -674,12 +665,11 @@ function VoiceTab({ players, voices, onAdd, onDel }) {
               </div>
             )}
 
-            {/* Textarea */}
             <textarea
               ref={textareaRef}
               value={text}
               onInput={onInput}
-              onChange={()=>{}} // handled by onInput
+              onChange={()=>{}}
               onKeyDown={onKey}
               placeholder={selP ? `${selP.name} (으)로 의견을 남겨보세요...` : "선수를 선택하고 의견을 남겨보세요"}
               maxLength={MAX}
@@ -694,10 +684,8 @@ function VoiceTab({ players, voices, onAdd, onDel }) {
           </div>
         </div>
 
-        {/* Divider */}
         <div style={{ height:"1px", background: T.border, margin:"12px 0" }}/>
 
-        {/* Footer: char count + post button */}
         <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between" }}>
           <span style={{ fontSize:"12px", color: text.length > MAX*0.85 ? (text.length >= MAX ? T.danger : POS_COLOR.C) : T.textMuted }}>
             {text.length > 0 && `${text.length} / ${MAX}`}
@@ -717,7 +705,6 @@ function VoiceTab({ players, voices, onAdd, onDel }) {
         </div>
       </div>
 
-      {/* ── Filter chips ── */}
       {voices.length > 0 && (
         <div style={{ display:"flex", gap:"6px", flexWrap:"wrap", marginBottom:"14px" }}>
           <button onClick={() => setFilter("all")}
@@ -739,7 +726,6 @@ function VoiceTab({ players, voices, onAdd, onDel }) {
         </div>
       )}
 
-      {/* ── Feed ── */}
       {!filtered.length && (
         <div style={{ textAlign:"center", padding:"60px 20px", color: T.textMuted }}>
           <div style={{ fontSize:"32px", marginBottom:"10px" }}>🏀</div>
@@ -760,16 +746,12 @@ function VoiceTab({ players, voices, onAdd, onDel }) {
               padding:"14px 0",
               borderBottom: isLast ? "none" : `1px solid ${T.border}`,
             }}>
-              {/* Avatar */}
               <div style={{ flexShrink:0 }}>
                 <div style={{ width:"40px", height:"40px", borderRadius:"50%", overflow:"hidden", border:`2px solid ${c}40`, background:`${c}15`, display:"flex", alignItems:"center", justifyContent:"center", fontSize:"16px", fontWeight:"800", color:c }}>
                   {p.photo ? <img src={p.photo} style={{ width:"100%", height:"100%", objectFit:"cover" }}/> : p.name.charAt(0)}
                 </div>
               </div>
-
-              {/* Content */}
               <div style={{ flex:1, minWidth:0 }}>
-                {/* Name row */}
                 <div style={{ display:"flex", alignItems:"center", gap:"6px", marginBottom:"4px" }}>
                   <span style={{ fontSize:"14px", fontWeight:"700", color: T.text }}>{p.name}</span>
                   {(p.positions||[]).map(pos => (
@@ -783,7 +765,6 @@ function VoiceTab({ players, voices, onAdd, onDel }) {
                     ✕
                   </button>
                 </div>
-                {/* Post text */}
                 <div style={{ fontSize:"14px", color: T.textSub, lineHeight:"1.65", whiteSpace:"pre-wrap", wordBreak:"break-word" }}>
                   {v.text}
                 </div>
@@ -792,7 +773,6 @@ function VoiceTab({ players, voices, onAdd, onDel }) {
           );
         })}
       </div>
-
     </div>
   );
 }
@@ -889,6 +869,59 @@ function OppCard({ player, onEdit, onDelete }) {
   );
 }
 
+// ── TeamNoteBox ★ 새로 추가 ───────────────────────────────────────────────
+function TeamNoteBox({ teamId, note, onSave }) {
+  const [editing, setEditing] = useState(false);
+  const [draft, setDraft] = useState(note || "");
+  const inputRef = useRef(null);
+
+  useEffect(() => { if (!editing) setDraft(note || ""); }, [note, editing]);
+
+  const startEdit = () => { setDraft(note || ""); setEditing(true); setTimeout(() => inputRef.current?.focus(), 50); };
+  const commit = () => { onSave(teamId, draft.trim()); setEditing(false); };
+  const cancel = () => { setDraft(note || ""); setEditing(false); };
+
+  if (editing) {
+    return (
+      <div style={{ display:"flex", alignItems:"flex-start", gap:"10px", marginBottom:"20px", background:T.surface, border:`1px solid ${T.borderMid}`, borderRadius:"12px", padding:"12px 14px", boxShadow:"0 2px 8px rgba(0,0,0,0.05)" }}>
+        <span style={{ fontSize:"16px", flexShrink:0, marginTop:"1px" }}>📋</span>
+        <textarea ref={inputRef} value={draft}
+          onChange={e => setDraft(e.target.value)}
+          onKeyDown={e => { if (e.key==="Enter"&&!e.shiftKey){e.preventDefault();commit();} if(e.key==="Escape") cancel(); }}
+          placeholder="팀 스타일, 전술 특징, 주의사항 등... (Shift+Enter 줄바꿈)"
+          style={{ ...IS, border:"none", background:"transparent", padding:"0", resize:"none", height:"auto", minHeight:"28px", fontSize:"13px", lineHeight:"1.6", flex:1 }}/>
+        <div style={{ display:"flex", gap:"6px", flexShrink:0 }}>
+          <button onClick={commit} style={{ padding:"5px 14px", borderRadius:"7px", border:"none", background:T.text, color:"#fff", fontWeight:"700", fontSize:"12px", cursor:"pointer", fontFamily:"inherit" }}>저장</button>
+          <button onClick={cancel} style={{ padding:"5px 10px", borderRadius:"7px", border:`1px solid ${T.border}`, background:T.surface, color:T.textSub, fontSize:"12px", cursor:"pointer", fontFamily:"inherit" }}>취소</button>
+        </div>
+      </div>
+    );
+  }
+
+  if (note) {
+    return (
+      <div onClick={startEdit}
+        style={{ display:"flex", alignItems:"flex-start", gap:"10px", marginBottom:"20px", cursor:"pointer", background:T.surface, border:`1px solid ${T.border}`, borderRadius:"12px", padding:"12px 14px", transition:"border-color 0.15s, box-shadow 0.15s" }}
+        onMouseEnter={e=>{ e.currentTarget.style.borderColor=T.borderMid; e.currentTarget.style.boxShadow="0 2px 8px rgba(0,0,0,0.05)"; }}
+        onMouseLeave={e=>{ e.currentTarget.style.borderColor=T.border; e.currentTarget.style.boxShadow="none"; }}>
+        <span style={{ fontSize:"16px", flexShrink:0, marginTop:"1px" }}>📋</span>
+        <span style={{ fontSize:"13px", color:T.textSub, lineHeight:"1.6", flex:1, whiteSpace:"pre-wrap", wordBreak:"break-word" }}>{note}</span>
+        <span style={{ fontSize:"11px", color:T.textMuted, flexShrink:0, marginTop:"2px" }}>편집 ✏️</span>
+      </div>
+    );
+  }
+
+  return (
+    <button onClick={startEdit}
+      style={{ display:"flex", alignItems:"center", gap:"8px", marginBottom:"20px", padding:"11px 14px", width:"100%", background:"transparent", border:`1px dashed ${T.border}`, borderRadius:"12px", color:T.textMuted, fontSize:"13px", cursor:"pointer", fontFamily:"inherit", textAlign:"left", transition:"border-color 0.15s, color 0.15s, background 0.15s" }}
+      onMouseEnter={e=>{ e.currentTarget.style.borderColor=T.borderMid; e.currentTarget.style.color=T.textSub; e.currentTarget.style.background=T.surface; }}
+      onMouseLeave={e=>{ e.currentTarget.style.borderColor=T.border; e.currentTarget.style.color=T.textMuted; e.currentTarget.style.background="transparent"; }}>
+      <span style={{ fontSize:"16px" }}>📋</span>
+      팀 스타일 메모 추가 — 전술 특징, 주의사항, 수비 포인트 등
+    </button>
+  );
+}
+
 // ── TacticsBoard ───────────────────────────────────────────────────────────
 const TACTIC_TOOLS = [
   { id:"move",  label:"이동",   icon:"✋" },
@@ -948,7 +981,6 @@ function TacticsBoard() {
   useEffect(() => { posRef.current = positions; }, [positions]);
   useEffect(() => { drawRef.current = drawings; }, [drawings]);
 
-  // ── SVG coord helper ────────────────────────────────────────────────────
   const svgPt = (e) => {
     const el = svgRef.current; if (!el) return {x:0,y:0};
     const r = el.getBoundingClientRect();
@@ -957,7 +989,6 @@ function TacticsBoard() {
     return { x:(cx-r.left)*(VBW/r.width), y:(cy-r.top)*(VBH/r.height) };
   };
 
-  // ── Player drag ──────────────────────────────────────────────────────────
   const onPlayerDown = (e, pid) => {
     if (tool !== "move") return;
     e.preventDefault(); e.stopPropagation();
@@ -966,7 +997,6 @@ function TacticsBoard() {
     dragRef.current = { pid, ox: pt.x - p.x, oy: pt.y - p.y };
   };
 
-  // ── SVG draw ─────────────────────────────────────────────────────────────
   const onSVGDown = (e) => {
     if (dragRef.current) return;
     if (tool === "pass" || tool === "run") {
@@ -1009,7 +1039,6 @@ function TacticsBoard() {
     }
   };
 
-  // ── Drop from sidebar ────────────────────────────────────────────────────
   const onDrop = (e) => {
     e.preventDefault();
     const pid = e.dataTransfer.getData("tpid"); if (!pid) return;
@@ -1047,9 +1076,7 @@ function TacticsBoard() {
 
   return (
     <div>
-      {/* ── Toolbar ── */}
       <div style={{ display:"flex", alignItems:"center", gap:"12px", marginBottom:"16px", flexWrap:"wrap" }}>
-        {/* tools */}
         <div style={{ display:"flex", gap:"4px", background: T.surfaceAlt, borderRadius:"10px", padding:"4px" }}>
           {TACTIC_TOOLS.map(t => (
             <button key={t.id} onClick={() => setTool(t.id)} style={{
@@ -1066,7 +1093,6 @@ function TacticsBoard() {
           ))}
         </div>
 
-        {/* colors */}
         <div style={{ display:"flex", gap:"6px", alignItems:"center" }}>
           <span style={{ fontSize:"11px", color: T.textMuted, fontWeight:"500" }}>선 색상</span>
           {TACTIC_COLORS.map(c => (
@@ -1080,7 +1106,6 @@ function TacticsBoard() {
           ))}
         </div>
 
-        {/* actions */}
         <div style={{ marginLeft:"auto", display:"flex", gap:"6px" }}>
           <button onClick={() => setDrawings([])} style={{ padding:"6px 14px", borderRadius:"8px", border:`1px solid ${T.border}`, background: T.surface, color: T.textSub, fontSize:"12px", cursor:"pointer", fontFamily:"inherit" }}>선 삭제</button>
           <button onClick={() => {
@@ -1095,8 +1120,6 @@ function TacticsBoard() {
       </div>
 
       <div style={{ display:"flex", gap:"16px", alignItems:"flex-start" }}>
-
-        {/* ── Sidebar: player tokens ── */}
         <div style={{ width:"96px", flexShrink:0, display:"flex", flexDirection:"column", gap:"10px" }}>
           <div style={{ fontSize:"10px", color: T.textMuted, fontWeight:"600", letterSpacing:".5px", textTransform:"uppercase" }}>우리팀</div>
           {TACTIC_PLAYERS_MY.map(p => (
@@ -1116,14 +1139,13 @@ function TacticsBoard() {
           ))}
         </div>
 
-        {/* ── Court SVG ── */}
         <div style={{ flex:1 }}>
           <svg ref={svgRef}
             viewBox={`0 0 ${VBW} ${VBH}`}
             style={{ width:"100%", borderRadius:"14px", border:`1px solid ${T.border}`, userSelect:"none", touchAction:"none", cursor: tool==="move" ? "default" : "crosshair", boxShadow:"0 4px 20px rgba(0,0,0,0.06)" }}
             onMouseDown={onSVGDown} onMouseMove={onSVGMove} onMouseUp={onSVGUp} onMouseLeave={onSVGUp}
-            onTouchStart={e=>{e.preventDefault(); if(dragRef.current) return; onSVGDown(e);}} 
-            onTouchMove={e=>{e.preventDefault(); onSVGMove(e);}} 
+            onTouchStart={e=>{e.preventDefault(); if(dragRef.current) return; onSVGDown(e);}}
+            onTouchMove={e=>{e.preventDefault(); onSVGMove(e);}}
             onTouchEnd={onSVGUp}
             onDragOver={e=>e.preventDefault()} onDrop={onDrop}>
 
@@ -1135,10 +1157,8 @@ function TacticsBoard() {
               ))}
             </defs>
 
-            {/* Court (same CourtSVG) */}
             <CourtSVG/>
 
-            {/* Saved drawings */}
             {drawings.map((d, i) => (
               <path key={i} d={ptsToPath(d.pts)} fill="none" stroke={d.color} strokeWidth="2.5"
                 strokeLinecap="round" strokeLinejoin="round" opacity=".9"
@@ -1146,7 +1166,6 @@ function TacticsBoard() {
                 markerEnd={d.isArrow ? markerFor(d.color) : undefined}/>
             ))}
 
-            {/* Current drawing in progress */}
             {isDrawing && curPts.length >= 2 && (
               <path d={ptsToPath(curPts)} fill="none" stroke={color} strokeWidth="2.5"
                 strokeLinecap="round" strokeLinejoin="round" opacity=".8"
@@ -1154,7 +1173,6 @@ function TacticsBoard() {
                 markerEnd={tool==="run" ? markerFor(color) : undefined}/>
             )}
 
-            {/* Players */}
             {allPlayers.map(p => {
               const pos = positions[p.id];
               if (!pos) return null;
@@ -1162,11 +1180,8 @@ function TacticsBoard() {
                 <g key={p.id} style={{ cursor: tool==="move" ? "grab" : "default" }}
                   onMouseDown={e => onPlayerDown(e, p.id)}
                   onTouchStart={e => { e.preventDefault(); e.stopPropagation(); const pt=svgPt(e); dragRef.current={ pid:p.id, ox:pt.x-pos.x, oy:pt.y-pos.y }; }}>
-                  {/* shadow */}
                   <ellipse cx={pos.x} cy={pos.y+2} rx="15" ry="5" fill="rgba(0,0,0,0.18)"/>
-                  {/* body */}
                   <circle cx={pos.x} cy={pos.y} r="15" fill={`${p.color}DD`} stroke={p.color} strokeWidth="2"/>
-                  {/* number */}
                   <text x={pos.x} y={pos.y+1} textAnchor="middle" dominantBaseline="central"
                     fontSize="12" fontWeight="700" fill="#fff"
                     stroke="rgba(0,0,0,0.3)" strokeWidth="1.5" paintOrder="stroke"
@@ -1199,7 +1214,8 @@ export default function App() {
   const [tab, setTab] = useState("roster");
   const [strat, setStrat] = useState({ offense:"", defense:"", notes:"" });
   const [editStrat, setEditStrat] = useState(false);
-  const [oppTeams, setOppTeams] = useState([{ id:"t1", name:"상대 팀 1", players:[] }]);
+  // ★ note:"" 추가
+  const [oppTeams, setOppTeams] = useState([{ id:"t1", name:"상대 팀 1", note:"", players:[] }]);
   const [selTeamId, setSelTeamId] = useState("t1");
   const [editingTeamId, setEditingTeamId] = useState(null);
   const [oppForm, setOppForm] = useState(false);
@@ -1207,7 +1223,6 @@ export default function App() {
   const [voices, setVoices] = useState([]);
   const [syncStatus, setSyncStatus] = useState("연결 중...");
 
-  // ── Firebase listeners (unchanged) ────────────────────────────────────
   useEffect(() => {
     const unsubs = [];
     const listen = (path, handler) => {
@@ -1221,8 +1236,9 @@ export default function App() {
     listen("strategy",(val) => { if (val) setStrat(val); });
     listen("oppTeams",(val) => {
       if (val) {
-        const teams = toArr(val).map(t => ({ ...t, players: t.players ? toArr(t.players).map(p => ({ ...p, positions: normArr(p.positions), playStyle: normArr(p.playStyle), weaknesses: normArr(p.weaknesses) })) : [] }));
-        setOppTeams(teams.length ? teams : [{ id:"t1", name:"상대 팀 1", players:[] }]);
+        // ★ note: t.note || "" 추가
+        const teams = toArr(val).map(t => ({ ...t, note: t.note || "", players: t.players ? toArr(t.players).map(p => ({ ...p, positions: normArr(p.positions), playStyle: normArr(p.playStyle), weaknesses: normArr(p.weaknesses) })) : [] }));
+        setOppTeams(teams.length ? teams : [{ id:"t1", name:"상대 팀 1", note:"", players:[] }]);
       }
     });
     listen("voices", (val) => { if (val) { const arr = toArr(val).sort((a,b) => (b.tsNum||0)-(a.tsNum||0)); setVoices(arr); } else { setVoices([]); } });
@@ -1230,7 +1246,6 @@ export default function App() {
     return () => unsubs.forEach(u => u());
   }, []);
 
-  // ── Write helpers (unchanged) ─────────────────────────────────────────
   const fbSet  = (path, val) => set(ref(db, path), val).catch(console.error);
   const fbPush = (path, val) => push(ref(db, path), val).catch(console.error);
   const fbDel  = (path)      => remove(ref(db, path)).catch(console.error);
@@ -1248,15 +1263,17 @@ export default function App() {
   const opps = curTeam ? curTeam.players : [];
   const saveOpp = (p) => { if (oppIdx !== null) { const oid = opps[oppIdx].id; fbSet(`oppTeams/${curTeam.id}/players/${oid}`, { ...p, id: oid }); setOppIdx(null); } else { fbPush(`oppTeams/${curTeam.id}/players`, p); } setOppForm(false); };
   const delOpp = (i) => { const oid = opps[i].id; fbDel(`oppTeams/${curTeam.id}/players/${oid}`); };
-  const addTeam = () => { const newRef = push(ref(db, "oppTeams"), { name:`상대 팀 ${oppTeams.length+1}`, players:{} }); newRef.then(() => { if(newRef.key) setSelTeamId(newRef.key); }).catch(console.error); setOppForm(false); setOppIdx(null); };
+  // ★ note:"" 추가
+  const addTeam = () => { const newRef = push(ref(db, "oppTeams"), { name:`상대 팀 ${oppTeams.length+1}`, note:"", players:{} }); newRef.then(() => { if(newRef.key) setSelTeamId(newRef.key); }).catch(console.error); setOppForm(false); setOppIdx(null); };
   const delTeam = (id) => { fbDel(`oppTeams/${id}`); const remaining = oppTeams.filter(t=>t.id!==id); if (selTeamId===id && remaining.length) setSelTeamId(remaining[0].id); };
   const renameTeam = (id, name) => fbUpd(`oppTeams/${id}`, { name });
+  // ★ 새로 추가
+  const saveTeamNote = (id, note) => fbUpd(`oppTeams/${id}`, { note });
 
   const posSumm = POSITIONS.map(pos=>({pos,count:players.filter(p=>(p.positions||[]).includes(pos)).length})).filter(x=>x.count>0);
   const highThreat = opps.filter(p=>p.threat==="high");
   const TABS = [{id:"roster",label:"선수단"},{id:"court",label:"코트 배치"},{id:"tactics",label:"전술판"},{id:"strategy",label:"전략"},{id:"voice",label:"팀 의견함"},{id:"opponent",label:"상대팀 분석"}];
 
-  // ── Loading screen ────────────────────────────────────────────────────
   if (loading) return (
     <div style={{ minHeight:"100vh", background:"#060d1a", display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center", gap:"16px" }}>
       <svg viewBox="0 0 100 100" style={{ width:"80px", height:"80px", animation:"spin 1.5s linear infinite" }}>
@@ -1281,7 +1298,6 @@ export default function App() {
       {/* ── Header ── */}
       <div style={{ background: T.surface, borderBottom:`1px solid ${T.border}`, padding:"16px 24px", display:"flex", alignItems:"center", justifyContent:"space-between", flexWrap:"wrap", gap:"12px" }}>
         <div style={{ display:"flex", alignItems:"center", gap:"12px" }}>
-          {/* logo */}
           <div style={{ width:"40px", height:"40px", borderRadius:"10px", overflow:"hidden", flexShrink:0, background: T.surfaceAlt, border:`1px solid ${T.border}`, display:"flex", alignItems:"center", justifyContent:"center" }}>
             <svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg" style={{ width:"28px", height:"28px" }}>
               <ellipse cx="50" cy="62" rx="32" ry="28" fill="#F5C518"/>
@@ -1468,6 +1484,11 @@ export default function App() {
                 + 팀 추가
               </button>
             </div>
+
+            {/* ★ 팀 스타일 메모 박스 */}
+            {curTeam && (
+              <TeamNoteBox teamId={curTeam.id} note={curTeam.note} onSave={saveTeamNote}/>
+            )}
 
             {curTeam&&(
               <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:"16px", flexWrap:"wrap", gap:"10px" }}>
