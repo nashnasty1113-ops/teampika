@@ -41,6 +41,7 @@ const POS_LABEL = { PG:"포인트가드", SG:"슈팅가드", SF:"스몰포워드
 
 const PLAY_STYLES = [
   { id:"shot_creator",    label:"Shot Creator",          ko:"샷 크리에이터",       desc:"드리블로 공간 만들고 미드레인지·스텝백 점퍼를 만드는 공격형 가드",   ex:"Kyrie Irving" },
+  { id:"catch&shooter",   label:"catch&shooter",         ko:"캐치앤슈터",          desc:"패스를 받은 즉시 바로 슛을 시도할 수 있는 그래비티 창출형 선수",   ex:"Klay Thompson" },
   { id:"playmaker",       label:"Playmaker",             ko:"플레이메이커",         desc:"패스 시야와 픽앤롤 운영으로 팀 공격을 조립하는 스타일",              ex:"Chris Paul" },
   { id:"3nd_wing",        label:"3&D Wing",              ko:"쓰리앤디 윙",          desc:"3점슛 + 강한 외곽 수비에 특화된 윙. 현대 농구 최고 수요 유형",      ex:"OG Anunoby" },
   { id:"slasher",         label:"Slasher",               ko:"슬래셔",               desc:"폭발적인 돌파와 림어택이 핵심인 공격 스타일",                        ex:"Ja Morant" },
@@ -590,111 +591,208 @@ function HalfCourtEditor({ players, zones, onZonesChange }) {
   );
 }
 
-// ── VoiceTab ───────────────────────────────────────────────────────────────
+// ── VoiceTab (Twitter-style feed) ─────────────────────────────────────────
 function VoiceTab({ players, voices, onAdd, onDel }) {
   const [selPlayer, setSelPlayer] = useState("");
-  const [text, setText] = useState("");
-  const [filter, setFilter] = useState("all");
+  const [text, setText]           = useState("");
+  const [filter, setFilter]       = useState("all");
+  const textareaRef = useRef(null);
 
-  const submit = () => { if (!selPlayer || !text.trim()) return; onAdd(selPlayer, text.trim()); setText(""); };
   const activePlayers = players.filter(p => p.name);
-  const selP = activePlayers.find(p => p.id === selPlayer);
-  const selC = selP ? ((selP.positions||[]).length ? POS_COLOR[selP.positions[0]] : POS_COLOR.PG) : POS_COLOR.PG;
+  const selP  = activePlayers.find(p => p.id === selPlayer);
+  const selC  = selP ? ((selP.positions||[]).length ? POS_COLOR[selP.positions[0]] : POS_COLOR.PG) : POS_COLOR.PG;
+  const canPost = selPlayer && text.trim();
   const filtered = filter === "all" ? voices : voices.filter(v => v.playerId === filter);
+  const MAX = 280;
+
+  const submit = () => {
+    if (!canPost) return;
+    onAdd(selPlayer, text.trim());
+    setText("");
+    if (textareaRef.current) textareaRef.current.style.height = "auto";
+  };
+
+  const onKey = (e) => {
+    if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) submit();
+  };
+
+  // auto-grow textarea
+  const onInput = (e) => {
+    setText(e.target.value);
+    e.target.style.height = "auto";
+    e.target.style.height = Math.min(e.target.scrollHeight, 180) + "px";
+  };
 
   return (
-    <div>
-      <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:"20px", marginBottom:"24px" }}>
-        <div style={{ background: T.surface, border:`1px solid ${T.border}`, borderRadius:"16px", padding:"20px" }}>
-          <div style={{ fontSize:"14px", fontWeight:"700", color: T.text, marginBottom:"16px" }}>💬 의견 남기기</div>
-          <div style={{ marginBottom:"12px" }}>
-            <label style={LS}>선수 선택</label>
-            <div style={{ display:"flex", flexWrap:"wrap", gap:"6px" }}>
-              {!activePlayers.length && <div style={{ fontSize:"12px", color: T.textMuted }}>선수단 탭에서 선수를 등록하세요</div>}
-              {activePlayers.map(p => {
-                const c = (p.positions||[]).length ? POS_COLOR[p.positions[0]] : POS_COLOR.PG;
-                const active = selPlayer === p.id;
-                return (
-                  <button key={p.id} onClick={() => setSelPlayer(active ? "" : p.id)}
-                    style={{ display:"flex", alignItems:"center", gap:"6px", padding:"5px 10px", borderRadius:"20px", border:`1px solid ${active ? c : T.border}`, background: active ? `${c}15` : T.surface, cursor:"pointer", transition:"all 0.15s", fontFamily:"inherit" }}>
-                    <div style={{ width:"22px", height:"22px", borderRadius:"50%", overflow:"hidden", border:`1.5px solid ${c}`, flexShrink:0, background:`${c}15`, display:"flex", alignItems:"center", justifyContent:"center", fontSize:"10px", fontWeight:"800", color:c }}>
-                      {p.photo ? <img src={p.photo} style={{ width:"100%", height:"100%", objectFit:"cover" }}/> : p.name.charAt(0)}
-                    </div>
-                    <span style={{ fontSize:"12px", color: active ? c : T.textSub, fontWeight: active ? "700" : "400" }}>{p.name}</span>
-                  </button>
-                );
-              })}
-            </div>
+    <div style={{ maxWidth:"600px" }}>
+
+      {/* ── Compose box ── */}
+      <div style={{ background: T.surface, border:`1px solid ${T.border}`, borderRadius:"16px", padding:"16px 18px", marginBottom:"20px" }}>
+
+        {/* Avatar row + textarea */}
+        <div style={{ display:"flex", gap:"12px" }}>
+          {/* Avatar / player picker trigger */}
+          <div style={{ flexShrink:0, paddingTop:"2px" }}>
+            {selP ? (
+              <div onClick={() => setSelPlayer("")}
+                style={{ width:"40px", height:"40px", borderRadius:"50%", overflow:"hidden", border:`2px solid ${selC}`, background:`${selC}15`, display:"flex", alignItems:"center", justifyContent:"center", fontSize:"16px", fontWeight:"800", color:selC, cursor:"pointer", flexShrink:0 }}>
+                {selP.photo ? <img src={selP.photo} style={{ width:"100%", height:"100%", objectFit:"cover" }}/> : selP.name.charAt(0)}
+              </div>
+            ) : (
+              <div style={{ width:"40px", height:"40px", borderRadius:"50%", background: T.surfaceAlt, border:`2px dashed ${T.borderMid}`, display:"flex", alignItems:"center", justifyContent:"center", fontSize:"18px", color: T.textMuted }}>
+                👤
+              </div>
+            )}
           </div>
-          <div style={{ marginBottom:"12px" }}>
-            <label style={LS}>의견 내용</label>
-            <textarea style={{ ...IS, height:"100px", resize:"vertical", borderColor: selPlayer ? `${selC}60` : T.border }} value={text} onChange={e => setText(e.target.value)} placeholder={selPlayer ? `${selP?.name}으로 의견을 남겨보세요...` : "선수를 선택한 후 의견을 입력하세요"}/>
+
+          <div style={{ flex:1, display:"flex", flexDirection:"column", gap:"10px" }}>
+            {/* Player selector chips */}
+            {!activePlayers.length ? (
+              <div style={{ fontSize:"12px", color: T.textMuted, paddingTop:"10px" }}>선수단 탭에서 선수를 먼저 등록해주세요</div>
+            ) : (
+              <div style={{ display:"flex", flexWrap:"wrap", gap:"5px" }}>
+                {activePlayers.map(p => {
+                  const c = (p.positions||[]).length ? POS_COLOR[p.positions[0]] : POS_COLOR.PG;
+                  const active = selPlayer === p.id;
+                  return (
+                    <button key={p.id} onClick={() => { setSelPlayer(active ? "" : p.id); textareaRef.current?.focus(); }}
+                      style={{ display:"flex", alignItems:"center", gap:"5px", padding:"4px 10px", borderRadius:"20px",
+                        border:`1px solid ${active ? c : T.border}`,
+                        background: active ? c : T.surface,
+                        color: active ? "#fff" : T.textSub,
+                        fontWeight: active ? "700" : "400",
+                        fontSize:"12px", cursor:"pointer", transition:"all .15s", fontFamily:"inherit" }}>
+                      {active && (
+                        <div style={{ width:"16px", height:"16px", borderRadius:"50%", overflow:"hidden", background:"rgba(255,255,255,0.25)", display:"flex", alignItems:"center", justifyContent:"center", fontSize:"9px", fontWeight:"900", color:"#fff", flexShrink:0 }}>
+                          {p.photo ? <img src={p.photo} style={{ width:"100%", height:"100%", objectFit:"cover" }}/> : p.name.charAt(0)}
+                        </div>
+                      )}
+                      {p.name}
+                    </button>
+                  );
+                })}
+              </div>
+            )}
+
+            {/* Textarea */}
+            <textarea
+              ref={textareaRef}
+              value={text}
+              onInput={onInput}
+              onChange={()=>{}} // handled by onInput
+              onKeyDown={onKey}
+              placeholder={selP ? `${selP.name} (으)로 의견을 남겨보세요...` : "선수를 선택하고 의견을 남겨보세요"}
+              maxLength={MAX}
+              style={{
+                ...IS,
+                height:"auto", minHeight:"60px", resize:"none", overflow:"hidden",
+                borderColor:"transparent", background:"transparent",
+                padding:"0", fontSize:"15px", lineHeight:"1.65",
+                color: T.text, fontFamily:"inherit",
+              }}
+            />
           </div>
-          <button onClick={submit} disabled={!selPlayer || !text.trim()}
-            style={{ width:"100%", padding:"11px", borderRadius:"10px", border:"none", background: selPlayer && text.trim() ? T.text : T.border, color: selPlayer && text.trim() ? "#fff" : T.textMuted, fontWeight:"700", fontSize:"13px", cursor: selPlayer && text.trim() ? "pointer" : "default", transition:"all 0.2s", fontFamily:"inherit" }}>
-            의견 등록
-          </button>
         </div>
 
-        <div style={{ background: T.surface, border:`1px solid ${T.border}`, borderRadius:"16px", padding:"20px" }}>
-          <div style={{ fontSize:"14px", fontWeight:"700", color: T.text, marginBottom:"16px" }}>📊 참여 현황</div>
-          {!activePlayers.length && <div style={{ fontSize:"13px", color: T.textMuted, textAlign:"center", padding:"20px 0" }}>선수를 등록하면 참여 현황이 표시됩니다</div>}
+        {/* Divider */}
+        <div style={{ height:"1px", background: T.border, margin:"12px 0" }}/>
+
+        {/* Footer: char count + post button */}
+        <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between" }}>
+          <span style={{ fontSize:"12px", color: text.length > MAX*0.85 ? (text.length >= MAX ? T.danger : POS_COLOR.C) : T.textMuted }}>
+            {text.length > 0 && `${text.length} / ${MAX}`}
+          </span>
+          <div style={{ display:"flex", alignItems:"center", gap:"8px" }}>
+            <span style={{ fontSize:"11px", color: T.textMuted }}>⌘↵ 로 전송</span>
+            <button onClick={submit} disabled={!canPost}
+              style={{ padding:"8px 20px", borderRadius:"20px", border:"none",
+                background: canPost ? T.text : T.border,
+                color: canPost ? "#fff" : T.textMuted,
+                fontWeight:"700", fontSize:"13px", cursor: canPost ? "pointer" : "default",
+                transition:"all .15s", fontFamily:"inherit",
+              }}>
+              게시
+            </button>
+          </div>
+        </div>
+      </div>
+
+      {/* ── Filter chips ── */}
+      {voices.length > 0 && (
+        <div style={{ display:"flex", gap:"6px", flexWrap:"wrap", marginBottom:"14px" }}>
+          <button onClick={() => setFilter("all")}
+            style={{ padding:"4px 14px", borderRadius:"20px", border:`1px solid ${filter==="all" ? T.text : T.border}`, background: filter==="all" ? T.text : T.surface, color: filter==="all" ? "#fff" : T.textSub, fontSize:"12px", cursor:"pointer", fontFamily:"inherit", fontWeight: filter==="all" ? "600" : "400" }}>
+            전체 {voices.length}
+          </button>
           {activePlayers.map(p => {
             const c = (p.positions||[]).length ? POS_COLOR[p.positions[0]] : POS_COLOR.PG;
             const cnt = voices.filter(v => v.playerId === p.id).length;
+            if (!cnt) return null;
+            const active = filter === p.id;
             return (
-              <div key={p.id} style={{ display:"flex", alignItems:"center", gap:"10px", marginBottom:"10px" }}>
-                <div style={{ width:"30px", height:"30px", borderRadius:"50%", overflow:"hidden", border:`2px solid ${c}40`, flexShrink:0, background:`${c}15`, display:"flex", alignItems:"center", justifyContent:"center", fontSize:"12px", fontWeight:"800", color:c }}>
+              <button key={p.id} onClick={() => setFilter(active ? "all" : p.id)}
+                style={{ padding:"4px 14px", borderRadius:"20px", border:`1px solid ${active ? c : T.border}`, background: active ? `${c}18` : T.surface, color: active ? c : T.textSub, fontSize:"12px", cursor:"pointer", fontFamily:"inherit", fontWeight: active ? "600" : "400" }}>
+                {p.name} {cnt}
+              </button>
+            );
+          })}
+        </div>
+      )}
+
+      {/* ── Feed ── */}
+      {!filtered.length && (
+        <div style={{ textAlign:"center", padding:"60px 20px", color: T.textMuted }}>
+          <div style={{ fontSize:"32px", marginBottom:"10px" }}>🏀</div>
+          <div style={{ fontSize:"14px", fontWeight:"600", color: T.textSub, marginBottom:"4px" }}>아직 의견이 없어요</div>
+          <div style={{ fontSize:"13px" }}>팀원들의 생각을 자유롭게 남겨보세요</div>
+        </div>
+      )}
+
+      <div style={{ display:"flex", flexDirection:"column" }}>
+        {filtered.map((v, idx) => {
+          const p = activePlayers.find(x => x.id === v.playerId);
+          if (!p) return null;
+          const c = (p.positions||[]).length ? POS_COLOR[p.positions[0]] : POS_COLOR.PG;
+          const isLast = idx === filtered.length - 1;
+          return (
+            <div key={v.id} style={{
+              display:"flex", gap:"12px",
+              padding:"14px 0",
+              borderBottom: isLast ? "none" : `1px solid ${T.border}`,
+            }}>
+              {/* Avatar */}
+              <div style={{ flexShrink:0 }}>
+                <div style={{ width:"40px", height:"40px", borderRadius:"50%", overflow:"hidden", border:`2px solid ${c}40`, background:`${c}15`, display:"flex", alignItems:"center", justifyContent:"center", fontSize:"16px", fontWeight:"800", color:c }}>
                   {p.photo ? <img src={p.photo} style={{ width:"100%", height:"100%", objectFit:"cover" }}/> : p.name.charAt(0)}
                 </div>
-                <div style={{ flex:1 }}>
-                  <div style={{ display:"flex", justifyContent:"space-between", marginBottom:"4px" }}>
-                    <span style={{ fontSize:"12px", color: T.textSub }}>{p.name}</span>
-                    <span style={{ fontSize:"11px", color: cnt>0 ? c : T.textMuted, fontWeight: cnt>0 ? "600" : "400" }}>{cnt}개</span>
-                  </div>
-                  <div style={{ height:"3px", background: T.surfaceAlt, borderRadius:"2px" }}>
-                    <div style={{ height:"100%", width: voices.length ? `${Math.min(cnt/Math.max(...activePlayers.map(pp=>voices.filter(v=>v.playerId===pp.id).length),1)*100,100)}%` : "0%", background:c, borderRadius:"2px", transition:"width 0.4s" }}/>
-                  </div>
+              </div>
+
+              {/* Content */}
+              <div style={{ flex:1, minWidth:0 }}>
+                {/* Name row */}
+                <div style={{ display:"flex", alignItems:"center", gap:"6px", marginBottom:"4px" }}>
+                  <span style={{ fontSize:"14px", fontWeight:"700", color: T.text }}>{p.name}</span>
+                  {(p.positions||[]).map(pos => (
+                    <span key={pos} style={{ background:`${POS_COLOR[pos]}15`, color: POS_COLOR[pos], borderRadius:"4px", padding:"0px 5px", fontSize:"10px", fontWeight:"600" }}>{pos}</span>
+                  ))}
+                  <span style={{ fontSize:"12px", color: T.textMuted, marginLeft:"auto" }}>{v.ts}</span>
+                  <button onClick={() => onDel(v.id)}
+                    style={{ background:"none", border:"none", color: T.textMuted, cursor:"pointer", fontSize:"13px", padding:"0 2px", lineHeight:1, opacity:0.5, transition:"opacity .15s" }}
+                    onMouseEnter={e=>e.currentTarget.style.opacity="1"}
+                    onMouseLeave={e=>e.currentTarget.style.opacity="0.5"}>
+                    ✕
+                  </button>
+                </div>
+                {/* Post text */}
+                <div style={{ fontSize:"14px", color: T.textSub, lineHeight:"1.65", whiteSpace:"pre-wrap", wordBreak:"break-word" }}>
+                  {v.text}
                 </div>
               </div>
-            );
-          })}
-        </div>
+            </div>
+          );
+        })}
       </div>
 
-      <div>
-        <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", marginBottom:"14px", flexWrap:"wrap", gap:"8px" }}>
-          <div style={{ fontSize:"14px", fontWeight:"700", color: T.text }}>의견 목록 <span style={{ color: POS_COLOR.PG, fontSize:"13px" }}>{filtered.length}개</span></div>
-          <div style={{ display:"flex", gap:"5px", flexWrap:"wrap" }}>
-            <button onClick={() => setFilter("all")} style={{ padding:"4px 12px", borderRadius:"20px", border:`1px solid ${filter==="all" ? T.text : T.border}`, background: filter==="all" ? T.text : T.surface, color: filter==="all" ? "#fff" : T.textSub, fontSize:"12px", cursor:"pointer", fontFamily:"inherit" }}>전체</button>
-            {activePlayers.map(p => { const c = (p.positions||[]).length ? POS_COLOR[p.positions[0]] : POS_COLOR.PG; const active = filter === p.id; return <button key={p.id} onClick={() => setFilter(active ? "all" : p.id)} style={{ padding:"4px 12px", borderRadius:"20px", border:`1px solid ${active ? c : T.border}`, background: active ? `${c}15` : T.surface, color: active ? c : T.textSub, fontSize:"12px", cursor:"pointer", fontFamily:"inherit", fontWeight: active ? "600" : "400" }}>{p.name}</button>; })}
-          </div>
-        </div>
-
-        {!filtered.length && <div style={{ textAlign:"center", padding:"48px", color: T.textMuted, fontSize:"13px" }}>아직 의견이 없어요.<br/>첫 번째 의견을 남겨보세요! 🏀</div>}
-        <div style={{ display:"flex", flexDirection:"column", gap:"10px" }}>
-          {filtered.map(v => {
-            const p = activePlayers.find(x => x.id === v.playerId); if (!p) return null;
-            const c = (p.positions||[]).length ? POS_COLOR[p.positions[0]] : POS_COLOR.PG;
-            return (
-              <div key={v.id} style={{ background: T.surface, border:`1px solid ${T.border}`, borderRadius:"12px", padding:"14px 16px" }}>
-                <div style={{ display:"flex", alignItems:"center", gap:"10px", marginBottom:"8px" }}>
-                  <div style={{ width:"34px", height:"34px", borderRadius:"50%", overflow:"hidden", border:`2px solid ${c}40`, flexShrink:0, background:`${c}15`, display:"flex", alignItems:"center", justifyContent:"center", fontSize:"14px", fontWeight:"800", color:c }}>
-                    {p.photo ? <img src={p.photo} style={{ width:"100%", height:"100%", objectFit:"cover" }}/> : p.name.charAt(0)}
-                  </div>
-                  <div style={{ flex:1 }}>
-                    <span style={{ fontSize:"13px", fontWeight:"700", color: c }}>{p.name}</span>
-                    {(p.positions||[]).length > 0 && <span style={{ fontSize:"10px", color: T.textMuted, marginLeft:"6px" }}>{p.positions.join("/")}</span>}
-                  </div>
-                  <span style={{ fontSize:"11px", color: T.textMuted }}>{v.ts}</span>
-                  <button onClick={() => onDel(v.id)} style={{ background: T.dangerBg, border:"none", borderRadius:"5px", padding:"2px 8px", color: T.danger, cursor:"pointer", fontSize:"11px", fontFamily:"inherit" }}>✕</button>
-                </div>
-                <div style={{ fontSize:"13px", color: T.textSub, lineHeight:"1.7", paddingLeft:"44px" }}>{v.text}</div>
-              </div>
-            );
-          })}
-        </div>
-      </div>
     </div>
   );
 }
@@ -791,6 +889,304 @@ function OppCard({ player, onEdit, onDelete }) {
   );
 }
 
+// ── TacticsBoard ───────────────────────────────────────────────────────────
+const TACTIC_TOOLS = [
+  { id:"move",  label:"이동",   icon:"✋" },
+  { id:"pass",  label:"패스선", icon:"✏️" },
+  { id:"run",   label:"이동선", icon:"➡️" },
+  { id:"erase", label:"지우개", icon:"🗑️" },
+];
+const TACTIC_COLORS = [
+  { hex:"#ffffff", name:"white" },
+  { hex:"#F2845C", name:"coral" },
+  { hex:"#5B8DEF", name:"blue" },
+  { hex:"#E05555", name:"red" },
+  { hex:"#E5B84A", name:"amber" },
+];
+const TACTIC_PLAYERS_MY  = [
+  { id:"t_m1", num:"1", label:"PG", color:"#F2845C" },
+  { id:"t_m2", num:"2", label:"SG", color:"#F2845C" },
+  { id:"t_m3", num:"3", label:"SF", color:"#F2845C" },
+  { id:"t_m4", num:"4", label:"PF", color:"#F2845C" },
+  { id:"t_m5", num:"5", label:"C",  color:"#F2845C" },
+];
+const TACTIC_PLAYERS_OPP = [
+  { id:"t_o1", num:"1", label:"PG", color:"#5B8DEF" },
+  { id:"t_o2", num:"2", label:"SG", color:"#5B8DEF" },
+  { id:"t_o3", num:"3", label:"SF", color:"#5B8DEF" },
+  { id:"t_o4", num:"4", label:"PF", color:"#5B8DEF" },
+  { id:"t_o5", num:"5", label:"C",  color:"#5B8DEF" },
+];
+const TACTIC_DEFAULT_POS = {
+  t_m1:{ x: CCX,           y: CM+CD*0.78 },
+  t_m2:{ x: CM+CW*0.18,    y: CM+CD*0.62 },
+  t_m3:{ x: CM+CW*0.82,    y: CM+CD*0.62 },
+  t_m4:{ x: CM+CW*0.30,    y: CM+CD*0.40 },
+  t_m5:{ x: CCX,           y: CM+CD*0.46 },
+  t_o1:{ x: CCX,           y: CM+CD*0.56 },
+  t_o2:{ x: CM+CW*0.28,    y: CM+CD*0.44 },
+  t_o3:{ x: CM+CW*0.72,    y: CM+CD*0.44 },
+  t_o4:{ x: CM+CW*0.38,    y: CM+CD*0.26 },
+  t_o5:{ x: CM+CW*0.62,    y: CM+CD*0.26 },
+};
+
+function TacticsBoard() {
+  const svgRef = useRef(null);
+  const [tool, setTool]     = useState("move");
+  const [color, setColor]   = useState("#ffffff");
+  const [drawings, setDrawings]   = useState([]);
+  const [curPts, setCurPts]       = useState([]);
+  const [isDrawing, setIsDrawing] = useState(false);
+  const [positions, setPositions] = useState(() => {
+    const pos = {};
+    [...TACTIC_PLAYERS_MY, ...TACTIC_PLAYERS_OPP].forEach(p => { pos[p.id] = { ...TACTIC_DEFAULT_POS[p.id] }; });
+    return pos;
+  });
+  const dragRef    = useRef(null);
+  const posRef     = useRef(positions);
+  const drawRef    = useRef(drawings);
+  useEffect(() => { posRef.current = positions; }, [positions]);
+  useEffect(() => { drawRef.current = drawings; }, [drawings]);
+
+  // ── SVG coord helper ────────────────────────────────────────────────────
+  const svgPt = (e) => {
+    const el = svgRef.current; if (!el) return {x:0,y:0};
+    const r = el.getBoundingClientRect();
+    const cx = e.touches ? e.touches[0].clientX : e.clientX;
+    const cy = e.touches ? e.touches[0].clientY : e.clientY;
+    return { x:(cx-r.left)*(VBW/r.width), y:(cy-r.top)*(VBH/r.height) };
+  };
+
+  // ── Player drag ──────────────────────────────────────────────────────────
+  const onPlayerDown = (e, pid) => {
+    if (tool !== "move") return;
+    e.preventDefault(); e.stopPropagation();
+    const pt = svgPt(e);
+    const p  = posRef.current[pid];
+    dragRef.current = { pid, ox: pt.x - p.x, oy: pt.y - p.y };
+  };
+
+  // ── SVG draw ─────────────────────────────────────────────────────────────
+  const onSVGDown = (e) => {
+    if (dragRef.current) return;
+    if (tool === "pass" || tool === "run") {
+      setIsDrawing(true);
+      const pt = svgPt(e);
+      setCurPts([pt.x, pt.y]);
+      e.preventDefault();
+    }
+    if (tool === "erase") eraseAt(svgPt(e));
+  };
+  const onSVGMove = (e) => {
+    const pt = svgPt(e);
+    if (dragRef.current) {
+      const { pid, ox, oy } = dragRef.current;
+      setPositions(prev => ({
+        ...prev,
+        [pid]: {
+          x: Math.max(CM+16, Math.min(CM+CW-16, pt.x - ox)),
+          y: Math.max(CM+16, Math.min(CM+CD-16, pt.y - oy)),
+        }
+      }));
+      return;
+    }
+    if (isDrawing) {
+      setCurPts(prev => [...prev, pt.x, pt.y]);
+      e.preventDefault();
+    }
+    if (tool === "erase" && (e.buttons === 1 || (e.touches && e.touches.length))) eraseAt(pt);
+  };
+  const onSVGUp = () => {
+    dragRef.current = null;
+    if (isDrawing) {
+      setIsDrawing(false);
+      setCurPts(prev => {
+        if (prev.length >= 4) {
+          setDrawings(d => [...d, { color, pts: prev, isDash: tool==="pass", isArrow: tool==="run" }]);
+        }
+        return [];
+      });
+    }
+  };
+
+  // ── Drop from sidebar ────────────────────────────────────────────────────
+  const onDrop = (e) => {
+    e.preventDefault();
+    const pid = e.dataTransfer.getData("tpid"); if (!pid) return;
+    const pt = svgPt(e);
+    setPositions(prev => ({ ...prev, [pid]: { x: Math.max(CM+16, Math.min(CM+CW-16, pt.x)), y: Math.max(CM+16, Math.min(CM+CD-16, pt.y)) } }));
+  };
+
+  const eraseAt = (pt) => {
+    setDrawings(prev => prev.filter(d => {
+      for (let i=0; i<d.pts.length-2; i+=2) {
+        const dx=d.pts[i]-pt.x, dy=d.pts[i+1]-pt.y;
+        if (Math.sqrt(dx*dx+dy*dy) < 20) return false;
+      }
+      return true;
+    }));
+  };
+
+  const ptsToPath = (pts) => {
+    if (pts.length < 2) return "";
+    let d = `M${pts[0]} ${pts[1]}`;
+    for (let i=2; i<pts.length-2; i+=2) {
+      const mx=(pts[i]+pts[i+2])/2, my=(pts[i+1]+pts[i+3])/2;
+      d += ` Q${pts[i]} ${pts[i+1]} ${mx} ${my}`;
+    }
+    if (pts.length >= 4) d += ` L${pts[pts.length-2]} ${pts[pts.length-1]}`;
+    return d;
+  };
+
+  const markerFor = (c) => {
+    const map = {"#ffffff":"url(#ta-w)","#F2845C":"url(#ta-coral)","#5B8DEF":"url(#ta-blue)","#E05555":"url(#ta-red)","#E5B84A":"url(#ta-amber)"};
+    return map[c] || "url(#ta-w)";
+  };
+
+  const allPlayers = [...TACTIC_PLAYERS_MY, ...TACTIC_PLAYERS_OPP];
+
+  return (
+    <div>
+      {/* ── Toolbar ── */}
+      <div style={{ display:"flex", alignItems:"center", gap:"12px", marginBottom:"16px", flexWrap:"wrap" }}>
+        {/* tools */}
+        <div style={{ display:"flex", gap:"4px", background: T.surfaceAlt, borderRadius:"10px", padding:"4px" }}>
+          {TACTIC_TOOLS.map(t => (
+            <button key={t.id} onClick={() => setTool(t.id)} style={{
+              padding:"6px 12px", borderRadius:"7px", border:"none", cursor:"pointer",
+              background: tool===t.id ? T.surface : "transparent",
+              color: tool===t.id ? T.text : T.textMuted,
+              fontWeight: tool===t.id ? "600" : "400",
+              fontSize:"12px", fontFamily:"inherit",
+              boxShadow: tool===t.id ? "0 1px 4px rgba(0,0,0,0.08)" : "none",
+              transition:"all .15s",
+            }}>
+              {t.icon} {t.label}
+            </button>
+          ))}
+        </div>
+
+        {/* colors */}
+        <div style={{ display:"flex", gap:"6px", alignItems:"center" }}>
+          <span style={{ fontSize:"11px", color: T.textMuted, fontWeight:"500" }}>선 색상</span>
+          {TACTIC_COLORS.map(c => (
+            <div key={c.name} onClick={() => setColor(c.hex)}
+              style={{ width:"22px", height:"22px", borderRadius:"50%",
+                background: c.hex === "#ffffff" ? "#e8e6e1" : c.hex,
+                border: color===c.hex ? `2px solid ${T.text}` : `2px solid transparent`,
+                cursor:"pointer", transition:".15s", transform: color===c.hex ? "scale(1.15)" : "scale(1)",
+                boxShadow: color===c.hex ? "0 0 0 1px #fff, 0 0 0 2.5px #1a1a1a" : "none",
+              }}/>
+          ))}
+        </div>
+
+        {/* actions */}
+        <div style={{ marginLeft:"auto", display:"flex", gap:"6px" }}>
+          <button onClick={() => setDrawings([])} style={{ padding:"6px 14px", borderRadius:"8px", border:`1px solid ${T.border}`, background: T.surface, color: T.textSub, fontSize:"12px", cursor:"pointer", fontFamily:"inherit" }}>선 삭제</button>
+          <button onClick={() => {
+            setDrawings([]);
+            setPositions(() => {
+              const pos = {};
+              [...TACTIC_PLAYERS_MY, ...TACTIC_PLAYERS_OPP].forEach(p => { pos[p.id] = { ...TACTIC_DEFAULT_POS[p.id] }; });
+              return pos;
+            });
+          }} style={{ padding:"6px 14px", borderRadius:"8px", border:`1px solid ${T.border}`, background: T.surface, color: T.textSub, fontSize:"12px", cursor:"pointer", fontFamily:"inherit" }}>전체 초기화</button>
+        </div>
+      </div>
+
+      <div style={{ display:"flex", gap:"16px", alignItems:"flex-start" }}>
+
+        {/* ── Sidebar: player tokens ── */}
+        <div style={{ width:"96px", flexShrink:0, display:"flex", flexDirection:"column", gap:"10px" }}>
+          <div style={{ fontSize:"10px", color: T.textMuted, fontWeight:"600", letterSpacing:".5px", textTransform:"uppercase" }}>우리팀</div>
+          {TACTIC_PLAYERS_MY.map(p => (
+            <div key={p.id} draggable onDragStart={e => e.dataTransfer.setData("tpid", p.id)}
+              style={{ display:"flex", alignItems:"center", gap:"8px", padding:"6px 8px", background: T.surface, border:`1px solid ${T.border}`, borderRadius:"8px", cursor:"grab" }}>
+              <div style={{ width:"26px", height:"26px", borderRadius:"50%", background:`${p.color}20`, border:`1.5px solid ${p.color}`, display:"flex", alignItems:"center", justifyContent:"center", fontSize:"11px", fontWeight:"700", color:p.color, flexShrink:0 }}>{p.num}</div>
+              <span style={{ fontSize:"11px", color: T.textSub, fontWeight:"500" }}>{p.label}</span>
+            </div>
+          ))}
+          <div style={{ fontSize:"10px", color: T.textMuted, fontWeight:"600", letterSpacing:".5px", textTransform:"uppercase", marginTop:"4px" }}>상대팀</div>
+          {TACTIC_PLAYERS_OPP.map(p => (
+            <div key={p.id} draggable onDragStart={e => e.dataTransfer.setData("tpid", p.id)}
+              style={{ display:"flex", alignItems:"center", gap:"8px", padding:"6px 8px", background: T.surface, border:`1px solid ${T.border}`, borderRadius:"8px", cursor:"grab" }}>
+              <div style={{ width:"26px", height:"26px", borderRadius:"50%", background:`${p.color}20`, border:`1.5px solid ${p.color}`, display:"flex", alignItems:"center", justifyContent:"center", fontSize:"11px", fontWeight:"700", color:p.color, flexShrink:0 }}>{p.num}</div>
+              <span style={{ fontSize:"11px", color: T.textSub, fontWeight:"500" }}>{p.label}</span>
+            </div>
+          ))}
+        </div>
+
+        {/* ── Court SVG ── */}
+        <div style={{ flex:1 }}>
+          <svg ref={svgRef}
+            viewBox={`0 0 ${VBW} ${VBH}`}
+            style={{ width:"100%", borderRadius:"14px", border:`1px solid ${T.border}`, userSelect:"none", touchAction:"none", cursor: tool==="move" ? "default" : "crosshair", boxShadow:"0 4px 20px rgba(0,0,0,0.06)" }}
+            onMouseDown={onSVGDown} onMouseMove={onSVGMove} onMouseUp={onSVGUp} onMouseLeave={onSVGUp}
+            onTouchStart={e=>{e.preventDefault(); if(dragRef.current) return; onSVGDown(e);}} 
+            onTouchMove={e=>{e.preventDefault(); onSVGMove(e);}} 
+            onTouchEnd={onSVGUp}
+            onDragOver={e=>e.preventDefault()} onDrop={onDrop}>
+
+            <defs>
+              {[["ta-w","#ffffff"],["ta-coral","#F2845C"],["ta-blue","#5B8DEF"],["ta-red","#E05555"],["ta-amber","#E5B84A"]].map(([id,c])=>(
+                <marker key={id} id={id} viewBox="0 0 10 10" refX="9" refY="5" markerWidth="5" markerHeight="5" orient="auto-start-reverse">
+                  <path d="M0 1L9 5L0 9" fill="none" stroke={c} strokeWidth="2" strokeLinecap="round"/>
+                </marker>
+              ))}
+            </defs>
+
+            {/* Court (same CourtSVG) */}
+            <CourtSVG/>
+
+            {/* Saved drawings */}
+            {drawings.map((d, i) => (
+              <path key={i} d={ptsToPath(d.pts)} fill="none" stroke={d.color} strokeWidth="2.5"
+                strokeLinecap="round" strokeLinejoin="round" opacity=".9"
+                strokeDasharray={d.isDash ? "8 5" : "none"}
+                markerEnd={d.isArrow ? markerFor(d.color) : undefined}/>
+            ))}
+
+            {/* Current drawing in progress */}
+            {isDrawing && curPts.length >= 2 && (
+              <path d={ptsToPath(curPts)} fill="none" stroke={color} strokeWidth="2.5"
+                strokeLinecap="round" strokeLinejoin="round" opacity=".8"
+                strokeDasharray={tool==="pass" ? "8 5" : "none"}
+                markerEnd={tool==="run" ? markerFor(color) : undefined}/>
+            )}
+
+            {/* Players */}
+            {allPlayers.map(p => {
+              const pos = positions[p.id];
+              if (!pos) return null;
+              return (
+                <g key={p.id} style={{ cursor: tool==="move" ? "grab" : "default" }}
+                  onMouseDown={e => onPlayerDown(e, p.id)}
+                  onTouchStart={e => { e.preventDefault(); e.stopPropagation(); const pt=svgPt(e); dragRef.current={ pid:p.id, ox:pt.x-pos.x, oy:pt.y-pos.y }; }}>
+                  {/* shadow */}
+                  <ellipse cx={pos.x} cy={pos.y+2} rx="15" ry="5" fill="rgba(0,0,0,0.18)"/>
+                  {/* body */}
+                  <circle cx={pos.x} cy={pos.y} r="15" fill={`${p.color}DD`} stroke={p.color} strokeWidth="2"/>
+                  {/* number */}
+                  <text x={pos.x} y={pos.y+1} textAnchor="middle" dominantBaseline="central"
+                    fontSize="12" fontWeight="700" fill="#fff"
+                    stroke="rgba(0,0,0,0.3)" strokeWidth="1.5" paintOrder="stroke"
+                    style={{ pointerEvents:"none", userSelect:"none" }}>
+                    {p.num}
+                  </text>
+                </g>
+              );
+            })}
+          </svg>
+
+          <div style={{ marginTop:"8px", fontSize:"11px", color: T.textMuted, textAlign:"center" }}>
+            ✋ 선수 드래그로 배치 · ✏️ 패스선(점선) · ➡️ 이동선(화살표) · 사이드바에서 드래그로 추가
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // ── Main App ───────────────────────────────────────────────────────────────
 export default function App() {
   const [loading, setLoading] = useState(true);
@@ -858,14 +1254,24 @@ export default function App() {
 
   const posSumm = POSITIONS.map(pos=>({pos,count:players.filter(p=>(p.positions||[]).includes(pos)).length})).filter(x=>x.count>0);
   const highThreat = opps.filter(p=>p.threat==="high");
-  const TABS = [{id:"roster",label:"선수단"},{id:"court",label:"코트 배치"},{id:"strategy",label:"전략"},{id:"voice",label:"팀 의견함"},{id:"opponent",label:"상대팀 분석"}];
+  const TABS = [{id:"roster",label:"선수단"},{id:"court",label:"코트 배치"},{id:"tactics",label:"전술판"},{id:"strategy",label:"전략"},{id:"voice",label:"팀 의견함"},{id:"opponent",label:"상대팀 분석"}];
 
   // ── Loading screen ────────────────────────────────────────────────────
   if (loading) return (
-    <div style={{ minHeight:"100vh", background: T.bg, display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center", gap:"16px" }}>
-      <div style={{ width:"48px", height:"48px", borderRadius:"50%", border:`3px solid ${T.border}`, borderTopColor: T.text, animation:"spin 0.8s linear infinite" }}/>
-      <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
-      <div style={{ color: T.textMuted, fontSize:"13px" }}>불러오는 중...</div>
+    <div style={{ minHeight:"100vh", background:"#060d1a", display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center", gap:"16px" }}>
+      <svg viewBox="0 0 100 100" style={{ width:"80px", height:"80px", animation:"spin 1.5s linear infinite" }}>
+        <style>{`@keyframes spin { from{transform-origin:50% 50%;transform:rotate(0deg)} to{transform-origin:50% 50%;transform:rotate(360deg)} }`}</style>
+        <ellipse cx="50" cy="62" rx="32" ry="28" fill="#F5C518"/>
+        <polygon points="20,42 10,12 32,30" fill="#F5C518"/><polygon points="80,42 90,12 68,30" fill="#F5C518"/>
+        <polygon points="20,42 10,12 16,18" fill="#1a1a1a"/><polygon points="80,42 90,12 84,18" fill="#1a1a1a"/>
+        <ellipse cx="50" cy="52" rx="26" ry="24" fill="#F5C518"/>
+        <circle cx="40" cy="46" r="5" fill="#1a1a1a"/><circle cx="60" cy="46" r="5" fill="#1a1a1a"/>
+        <circle cx="41.5" cy="44.5" r="1.8" fill="#fff"/><circle cx="61.5" cy="44.5" r="1.8" fill="#fff"/>
+        <ellipse cx="50" cy="54" rx="3" ry="2" fill="#c0392b"/>
+        <path d="M44 57 Q50 63 56 57" fill="none" stroke="#1a1a1a" strokeWidth="1.5" strokeLinecap="round"/>
+        <circle cx="34" cy="57" r="6" fill="#ff6b6b" fillOpacity="0.7"/><circle cx="66" cy="57" r="6" fill="#ff6b6b" fillOpacity="0.7"/>
+      </svg>
+      <div style={{ color:"rgba(255,255,255,0.5)", fontSize:"14px" }}>Firebase 연결 중...</div>
     </div>
   );
 
@@ -976,6 +1382,17 @@ export default function App() {
               </div>
             </div>
             <HalfCourtEditor players={players} zones={zones} onZonesChange={saveZones}/>
+          </div>
+        )}
+
+        {/* ── TACTICS ── */}
+        {tab==="tactics"&&(
+          <div>
+            <div style={{ marginBottom:"18px" }}>
+              <h2 style={{ margin:"0 0 4px", fontSize:"18px", fontWeight:"700", color: T.text }}>전술판</h2>
+              <div style={{ fontSize:"12px", color: T.textMuted }}>선수를 배치하고 패스·이동 동선을 그려보세요</div>
+            </div>
+            <TacticsBoard/>
           </div>
         )}
 
