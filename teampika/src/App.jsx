@@ -1204,6 +1204,69 @@ function TacticsBoard() {
 
 // ── Main App ───────────────────────────────────────────────────────────────
 export default function App() {
+  // ── LoginScreen ────────────────────────────────────────────────────────────
+const TEAM_PASSWORD = "pika2026"; // ← 원하는 비밀번호로 변경
+
+function LoginScreen({ onSuccess }) {
+  const [pw, setPw] = useState("");
+  const [err, setErr] = useState(false);
+
+  const tryLogin = () => {
+    if (pw === TEAM_PASSWORD) {
+      sessionStorage.setItem("team_auth", "ok");
+      onSuccess();
+    } else {
+      setErr(true);
+      setPw("");
+    }
+  };
+
+  return (
+    <div style={{ minHeight:"100vh", background:"#060d1a", display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center", gap:"24px", fontFamily:"'Noto Sans KR','Apple SD Gothic Neo',sans-serif" }}>
+      <svg viewBox="0 0 100 100" style={{ width:"72px", height:"72px" }}>
+        <ellipse cx="50" cy="62" rx="32" ry="28" fill="#F5C518"/>
+        <polygon points="20,42 10,12 32,30" fill="#F5C518"/><polygon points="80,42 90,12 68,30" fill="#F5C518"/>
+        <polygon points="20,42 10,12 16,18" fill="#1a1a1a"/><polygon points="80,42 90,12 84,18" fill="#1a1a1a"/>
+        <ellipse cx="50" cy="52" rx="26" ry="24" fill="#F5C518"/>
+        <circle cx="40" cy="46" r="5" fill="#1a1a1a"/><circle cx="60" cy="46" r="5" fill="#1a1a1a"/>
+        <circle cx="41.5" cy="44.5" r="1.8" fill="#fff"/><circle cx="61.5" cy="44.5" r="1.8" fill="#fff"/>
+        <ellipse cx="50" cy="54" rx="3" ry="2" fill="#c0392b"/>
+        <path d="M44 57 Q50 63 56 57" fill="none" stroke="#1a1a1a" strokeWidth="1.5" strokeLinecap="round"/>
+        <circle cx="34" cy="57" r="6" fill="#ff6b6b" fillOpacity="0.7"/><circle cx="66" cy="57" r="6" fill="#ff6b6b" fillOpacity="0.7"/>
+      </svg>
+      <div style={{ textAlign:"center" }}>
+        <div style={{ color:"#fff", fontSize:"20px", fontWeight:"700", marginBottom:"6px" }}>팀 대시보드</div>
+        <div style={{ color:"rgba(255,255,255,0.4)", fontSize:"13px" }}>팀원만 입장할 수 있어요</div>
+      </div>
+      <div style={{ display:"flex", flexDirection:"column", gap:"10px", width:"260px" }}>
+        <input
+          type="password" placeholder="비밀번호 입력" value={pw}
+          onChange={e => { setPw(e.target.value); setErr(false); }}
+          onKeyDown={e => e.key === "Enter" && tryLogin()}
+          style={{
+            padding:"12px 16px", borderRadius:"12px", fontSize:"15px",
+            border:`1.5px solid ${err ? "#E05555" : "rgba(255,255,255,0.15)"}`,
+            background:"rgba(255,255,255,0.07)", color:"#fff",
+            outline:"none", fontFamily:"inherit",
+            textAlign:"center", letterSpacing:"3px",
+          }} autoFocus
+        />
+        {err && <div style={{ color:"#E05555", fontSize:"12px", textAlign:"center" }}>비밀번호가 틀렸어요 🔒</div>}
+        <button onClick={tryLogin} disabled={!pw}
+          style={{
+            padding:"12px", borderRadius:"12px", border:"none",
+            background: pw ? "#F5C518" : "rgba(255,255,255,0.1)",
+            color: pw ? "#1a1a1a" : "rgba(255,255,255,0.3)",
+            fontWeight:"700", fontSize:"14px", cursor: pw ? "pointer" : "default",
+            fontFamily:"inherit", transition:"all .15s",
+          }}>
+          입장하기
+        </button>
+      </div>
+    </div>
+  );
+}
+  const [authed, setAuthed] = useState(() => sessionStorage.getItem("team_auth") === "ok");
   const [loading, setLoading] = useState(true);
   const [teamName, setTeamName] = useState("우리 팀");
   const [editTN, setEditTN] = useState(false);
@@ -1274,6 +1337,7 @@ export default function App() {
   const highThreat = opps.filter(p=>p.threat==="high");
   const TABS = [{id:"roster",label:"선수단"},{id:"court",label:"코트 배치"},{id:"tactics",label:"전술판"},{id:"strategy",label:"전략"},{id:"voice",label:"팀 의견함"},{id:"opponent",label:"상대팀 분석"}];
 
+  if (!authed) return <LoginScreen onSuccess={() => setAuthed(true)} />;
   if (loading) return (
     <div style={{ minHeight:"100vh", background:"#060d1a", display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center", gap:"16px" }}>
       <svg viewBox="0 0 100 100" style={{ width:"80px", height:"80px", animation:"spin 1.5s linear infinite" }}>
